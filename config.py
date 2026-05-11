@@ -1,0 +1,6 @@
+# config.py
+API_TOKEN = "8510828516:AAGDbytR4QJRCyKz1lqKErihsgt7PtJqSfg"
+ADMIN_ID = 7656340616
+YOUR_CHANNEL_ID = -1003744771199
+SUPPORT_URL = "https://t.me/independence_N"
+DATABASE_NAME = 'shop.db'
