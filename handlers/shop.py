@@ -1,10 +1,45 @@
 import telebot
 from telebot import types
 from database import get_all_items, get_item_by_id
+from datetime import datetime
+import pytz
+
+def is_shop_open():
+    # မြန်မာနိုင်ငံရဲ့ အချိန်ဇုန်ကို သတ်မှတ်ပါ
+    tz = pytz.timezone('Asia/Yangon')
+    now = datetime.now(tz)
+    current_hour = now.hour # ၂၄ နာရီ format နဲ့ယူပါသည် (0-23)
+
+    # မနက် ၉ နာရီ (9) မှ ည ၉ နာရီ (21) အထိ ဖွင့်မည်
+    if 9 <= current_hour < 21:
+        return True
+    return False
 
 def init_shop_handlers(bot):
     @bot.callback_query_handler(func=lambda call: call.data == 'shop')
     def shop_callback(call):
+        # ၁။ အရင်ဆုံး ဆိုင်ဖွင့်မဖွင့် စစ်မည်
+        if not is_shop_open():
+            closed_text = (
+                "🌙 <b>Shop is Currently Closed</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n\n"
+                "ယခုအချိန်သည် Admin အနားယူချိန် ဖြစ်ပါသဖြင့် ဆိုင်ခေတ္တ ပိတ်ထားပါသည်၊၊\n\n"
+                "🕒 <b>ဆိုင်ဖွင့်ချိန်:</b> 09:00 AM - 09:00 PM\n\n"
+                "မနက် ၉ နာရီ ကျမှ ပြန်လည် ဝယ်ယူနိုင်ပါမည်။ ကျေးဇူးတင်ပါတယ်ဗျ၊၊"
+            )
+            # အသိပေးစာ ပေါ်စေချင်လျှင် answer_callback_query သုံးနိုင်သည်
+            bot.answer_callback_query(call.id, "ဆိုင်ပိတ်ထားပါသည်", show_alert=True)
+            
+            # မူလ message ကို ဆိုင်ပိတ်စာသားဖြင့် လဲလိုက်မည်
+            bot.edit_message_text(
+                closed_text, 
+                call.message.chat.id, 
+                call.message.message_id, 
+                parse_mode='HTML'
+            )
+            return # ဆိုင်ပိတ်ချိန်ဖြစ်၍ အောက်က code တွေကို ဆက်မသွားတော့ပါ
+
+        # ၂။ ဆိုင်ဖွင့်ချိန်ဖြစ်မှ မူလအတိုင်း Catalog ကို ပြမည်
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
         show_shop_catalog(call.from_user.id, bot)
 
