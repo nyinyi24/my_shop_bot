@@ -1,8 +1,20 @@
 import telebot
+from config import DATABASE_NAME
 from telebot import types
 from database import get_all_items, get_item_by_id
 from datetime import datetime
 import pytz
+
+def get_shop_status():
+    import sqlite3
+    try:
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM settings WHERE key = 'shop_status'")
+            result = cursor.fetchone()
+            return result[0] if result else 'open'
+    except:
+        return 'open'
 
 def is_shop_open():
     # မြန်မာနိုင်ငံရဲ့ အချိန်ဇုန်ကို သတ်မှတ်ပါ
@@ -18,28 +30,46 @@ def is_shop_open():
 def init_shop_handlers(bot):
     @bot.callback_query_handler(func=lambda call: call.data == 'shop')
     def shop_callback(call):
-        # ၁။ အရင်ဆုံး ဆိုင်ဖွင့်မဖွင့် စစ်မည်
+        status = get_shop_status()
+
+        # ၁။ Maintenance Mode စစ်ခြင်း
+        if status == 'maintenance':
+            maintenance_text = (
+                "🛠 <b>Bot Maintenance</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n\n"
+                "ပိုမိုကောင်းမွန်သော ဝန်ဆောင်မှုများ ပေးနိုင်ရန် Bot ကို ခေတ္တပြုပြင်နေပါသည်၊၊\n\n"
+                "ခေတ္တစောင့်ဆိုင်းပေးပါရန် မေတ္တာရပ်ခံအပ်ပါတယ်ဗျာ၊၊ 🙏"
+            )
+            bot.answer_callback_query(call.id, "ပြုပြင်ထိန်းသိမ်းနေပါသည်", show_alert=True)
+            bot.edit_message_text(maintenance_text, call.message.chat.id, call.message.message_id, parse_mode='HTML')
+            return
+
+        # ၂။ Admin က Manual ပိတ်ထားခြင်း (/close) စစ်ခြင်း
+        if status == 'close':
+            admin_closed_text = (
+                "🛑 <b>Shop is Closed Today</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n\n"
+                "ယနေ့ ဆိုင်ပိတ်ထားပါတယ်ခင်ဗျာ၊၊\n\n"
+                "နောက်ရက်မှ ပြန်လည် အားပေးပါရန် ဖိတ်ခေါ်အပ်ပါတယ်၊၊ ကျေးဇူးတင်ပါတယ်ဗျ၊၊ 🙏"
+            )
+            bot.answer_callback_query(call.id, "ယနေ့ ဆိုင်ပိတ်ပါသည်", show_alert=True)
+            bot.edit_message_text(admin_closed_text, call.message.chat.id, call.message.message_id, parse_mode='HTML')
+            return
+
+        # ၃။ ပုံမှန် အိပ်ချိန်/နားချိန် (အချိန်ဇယားအရ) စစ်ခြင်း
         if not is_shop_open():
-            closed_text = (
+            time_closed_text = (
                 "🌙 <b>Shop is Currently Closed</b>\n"
                 "━━━━━━━━━━━━━━━━━━\n\n"
                 "ယခုအချိန်သည် Admin အနားယူချိန် ဖြစ်ပါသဖြင့် ဆိုင်ခေတ္တ ပိတ်ထားပါသည်၊၊\n\n"
                 "🕒 <b>ဆိုင်ဖွင့်ချိန်:</b> 09:00 AM - 09:00 PM\n\n"
-                "မနက် ၉ နာရီ ကျမှ ပြန်လည် ဝယ်ယူနိုင်ပါမည်။ ကျေးဇူးတင်ပါတယ်ဗျ၊၊"
+                "မနက် ၉ နာရီ ကျမှ ပြန်လည် ဝယ်ယူနိုင်ပါမည်။ ကျေးဇူးတင်ပါတယ်ဗျ၊၊ 😊"
             )
-            # အသိပေးစာ ပေါ်စေချင်လျှင် answer_callback_query သုံးနိုင်သည်
-            bot.answer_callback_query(call.id, "ဆိုင်ပိတ်ထားပါသည်", show_alert=True)
-            
-            # မူလ message ကို ဆိုင်ပိတ်စာသားဖြင့် လဲလိုက်မည်
-            bot.edit_message_text(
-                closed_text, 
-                call.message.chat.id, 
-                call.message.message_id, 
-                parse_mode='HTML'
-            )
-            return # ဆိုင်ပိတ်ချိန်ဖြစ်၍ အောက်က code တွေကို ဆက်မသွားတော့ပါ
+            bot.answer_callback_query(call.id, "ဆိုင်ပိတ်ချိန်ဖြစ်ပါသည်", show_alert=True)
+            bot.edit_message_text(time_closed_text, call.message.chat.id, call.message.message_id, parse_mode='HTML')
+            return
 
-        # ၂။ ဆိုင်ဖွင့်ချိန်ဖြစ်မှ မူလအတိုင်း Catalog ကို ပြမည်
+        # ၄။ အပေါ်က အခြေအနေတွေ အကုန်ကင်းရှင်းမှ Catalog ပြခြင်း
         bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
         show_shop_catalog(call.from_user.id, bot)
 

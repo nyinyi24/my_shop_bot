@@ -1,4 +1,6 @@
 import telebot
+import sqlite3
+from config import DATABASE_NAME
 from config import API_TOKEN, ADMIN_ID
 from database import init_db
 from handlers.start import init_start_handlers, show_home_menu
@@ -72,6 +74,50 @@ def handle_send_command(message):
         
     except Exception as e:
         bot.reply_to(message, f"❌ ပို့ဆောင်မှု မအောင်မြင်ပါ- {e}")
+
+@bot.message_handler(commands=['open', 'close', 'maintenance'])
+def change_status(message):
+    if str(message.from_user.id) != str(ADMIN_ID): return
+
+    status = message.text[1:] # /open ဆိုရင် open လို့ယူမယ်
+    
+    import sqlite3
+    with sqlite3.connect(DATABASE_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE settings SET value = ? WHERE key = 'shop_status'", (status,))
+        conn.commit()
+    
+    status_msg = {
+        'open': "✅ ဆိုင်ကို ပြန်ဖွင့်လိုက်ပါပြီ၊၊",
+        'close': "🛑 ဆိုင်ကို ပိတ်လိုက်ပါပြီ၊၊",
+        'maintenance': "🛠 Bot ကို Maintenance Mode ပြောင်းလိုက်ပါပြီ၊၊"
+    }
+    bot.reply_to(message, status_msg.get(status, "Status updated!"))
+
+# Announcement ပို့သည့် Command
+@bot.message_handler(commands=['announcement'])
+def broadcast(message):
+    if str(message.from_user.id) != str(ADMIN_ID): return
+    
+    text_to_send = message.text.replace('/announcement', '').strip()
+    if not text_to_send:
+        bot.reply_to(message, "💡 သုံးနည်း: /announcement [စာသား]")
+        return
+
+    # User အားလုံးဆီ ပို့ရန် (Database မှ user_id အားလုံးကို ဆွဲထုတ်ပါ)
+    with sqlite3.connect(DATABASE_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT user_id FROM orders") # ဝယ်ဖူးသူအားလုံးဆီ ပို့ခြင်း
+        users = cursor.fetchall()
+
+    count = 0
+    for user in users:
+        try:
+            bot.send_message(user[0], f"📢 <b>ANNOUNCEMENT</b>\n\n{text_to_send}", parse_mode='HTML')
+            count += 1
+        except: continue
+    
+    bot.reply_to(message, f"✅ User {count} ယောက်ဆီ ပို့ဆောင်ပြီးပါပြီ၊၊")
 
 # ၄။ Bot ကို စတင်ခြင်း
 if __name__ == "__main__":
