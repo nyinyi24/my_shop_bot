@@ -30,6 +30,26 @@ def init_payment_handlers(bot):
             item_stock = item[4]        # Index 4 က Stock ဖြစ်ပါတယ်
             product_info = item[6] if len(item) > 6 and item[6] else "အသေးစိတ် အချက်အလက် မရှိသေးပါ၊၊"
 
+            if item_stock <= 0:
+                bot.answer_callback_query(call.id, "❌ စိတ်မရှိပါနဲ့ဗျာ၊ ဒီပစ္စည်းက Stock ပြတ်သွားပါပြီ၊၊", show_alert=True)
+                
+                markup = types.InlineKeyboardMarkup()
+                markup.add(types.InlineKeyboardButton("⬅️ Back to Shop", callback_data="shop"))
+                
+                bot.edit_message_text(
+                    f"⚠️ <b>{item_name}</b> က လက်ရှိမှာ Stock ပြတ်လပ်နေပါသည်၊၊\nAdmin ဘက်မှ Stock ပြန်ဖြည့်ပေးရန် ခေတ္တစောင့်ဆိုင်းပေးပါဦး၊၊",
+                    call.message.chat.id, 
+                    call.message.message_id, 
+                    reply_markup=markup, 
+                    parse_mode='HTML'
+                )
+                return
+
+        # (ခ) User ဝယ်ချင်တဲ့ အရေအတွက်ထက် Stock နည်းနေလျှင်
+            if item_stock < quantity:
+                bot.answer_callback_query(call.id, f"❌ လက်ကျန် {item_stock} ခုပဲ ရှိပါတော့တယ်ဗျာ၊၊", show_alert=True)
+                return
+
         # ၂။ ဈေးနှုန်းတွက်ချက်ခြင်း
             price_per_item = int(float(raw_price_str))
             total_price = price_per_item * quantity
