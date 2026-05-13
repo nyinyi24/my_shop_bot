@@ -24,10 +24,10 @@ def init_payment_handlers(bot):
                 bot.answer_callback_query(call.id, "❌ ပစ္စည်း ရှာမတွေ့ပါ၊၊", show_alert=True)
                 return
 
-        # ၁။ Screenshot အရ Index များကို ယူခြင်း
             item_name = item[1]         
             short_detail = item[2]      
             raw_price_str = str(item[3]).replace(',', '') 
+            item_stock = item[4]        # Index 4 က Stock ဖြစ်ပါတယ်
             product_info = item[6] if len(item) > 6 and item[6] else "အသေးစိတ် အချက်အလက် မရှိသေးပါ၊၊"
 
         # ၂။ ဈေးနှုန်းတွက်ချက်ခြင်း
@@ -51,7 +51,8 @@ def init_payment_handlers(bot):
             f"━━━━━━━━━━━━━━━━━━\n\n"
             f"📦 <b>ပစ္စည်း:</b> {item_name}\n"
             f"ℹ️ <b>အမျိုးအစား:</b> {short_detail}\n"
-            f"🔢 <b>အရေအတွက်:</b> {quantity} ခု\n"
+            f"📊 <b>လက်ကျန်:</b> {item_stock} ခု\n" 
+            f"🔢 <b>ဝယ်ယူမည့် အရေအတွက်:</b> {quantity} ခု\n"
             f"💵 <b>တစ်ခုဈေး:</b> <code>{formatted_price}</code> MMK\n"
             f"💰 <b>စုစုပေါင်း:</b> <code>{formatted_total}</code> MMK\n\n"
             
