@@ -119,6 +119,34 @@ def broadcast(message):
     
     bot.reply_to(message, f"✅ User {count} ယောက်ဆီ ပို့ဆောင်ပြီးပါပြီ၊၊")
 
+def set_bot_commands(bot):
+    # ၁။ User အားလုံးအတွက် ပြမည့် Command များ
+    user_commands = [
+        telebot.types.BotCommand("start", "🏠 ပင်မစာမျက်နှာသို့"),
+        telebot.types.BotCommand("shop", "🛒 ပစ္စည်းများ ကြည့်ရှုရန်"),
+        telebot.types.BotCommand("myorders", "📦 မိမိ၏ ဝယ်ယူမှုမှတ်တမ်း"),
+        telebot.types.BotCommand("help", "❓ အကူအညီရယူရန်")
+    ]
+    bot.set_my_commands(user_commands, scope=telebot.types.BotCommandScopeAllPrivateChats())
+
+    # ၂။ Admin အတွက်သာ သီးသန့်ပြမည့် Command များ
+    admin_commands = user_commands + [
+        telebot.types.BotCommand("open", "✅ ဆိုင်ဖွင့်မည်"),
+        telebot.types.BotCommand("close", "🛑 ဆိုင်ပိတ်မည်"),
+        telebot.types.BotCommand("maintenance", "🛠 Maintenance Mode"),
+        telebot.types.BotCommand("announcement", "📢 Announcement ပို့မည်"),
+        telebot.types.BotCommand("send", "✉️ ပစ္စည်း ပို့ဆောင်မည်")
+    ]
+    
+    # Admin ID အတွက်သာ scope သတ်မှတ်ခြင်း
+    bot.set_my_commands(
+        admin_commands, 
+        scope=telebot.types.BotCommandScopeChat(chat_id=ADMIN_ID)
+    )
+
+# main ထဲမှာ bot စပွင့်တာနဲ့ ဒီ function ကို ခေါ်လိုက်ပါ
+set_bot_commands(bot)
+
 # ၄။ Bot ကို စတင်ခြင်း
 if __name__ == "__main__":
     print("🤖 Bot is running with HTML mode...")
