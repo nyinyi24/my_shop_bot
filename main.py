@@ -122,10 +122,9 @@ def broadcast(message):
 def set_bot_commands(bot):
     # ၁။ User အားလုံးအတွက် ပြမည့် Command များ
     user_commands = [
-        telebot.types.BotCommand("start", "🏠 ပင်မစာမျက်နှာသို့"),
-        telebot.types.BotCommand("shop", "🛒 ပစ္စည်းများ ကြည့်ရှုရန်"),
-        telebot.types.BotCommand("myorders", "📦 မိမိ၏ ဝယ်ယူမှုမှတ်တမ်း"),
-        telebot.types.BotCommand("help", "❓ အကူအညီရယူရန်")
+        telebot.types.BotCommand("start", " Bot ကိုစတင်ရန"),
+        telebot.types.BotCommand("help", "❓ အကူအညီရယူရန်"),
+        telebot.types.BotCommand("home", "🏠 ပင်မစာမျက်နှာသိုသွားရန်")
     ]
     bot.set_my_commands(user_commands, scope=telebot.types.BotCommandScopeAllPrivateChats())
 
