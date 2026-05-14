@@ -3,7 +3,7 @@ from telebot import types
 import datetime
 from config import YOUR_CHANNEL_ID, SUPPORT_URL
 from database import add_user, get_user
-from shop import get_shop_status
+from .shop import get_shop_status
 from config import ADMIN_ID
 
 def check_subscription(user_id, bot):
