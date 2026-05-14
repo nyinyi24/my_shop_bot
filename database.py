@@ -187,3 +187,16 @@ def reduce_gw_stock(item_id):
         # အကယ်၍ Stock က 0 ဖြစ်သွားရင် is_used ကို 1 ပြောင်းပေးမယ် (Safety အတွက်ပါ)
         cursor.execute("UPDATE gw_items SET is_used = 1 WHERE gw_item_id = ? AND stock <= 0", (item_id,))
         conn.commit()
+
+def get_shop_status():
+    import sqlite3
+    try:
+        # DATABASE_NAME ကို config ကနေ import လုပ်ထားဖို့ လိုပါမယ်
+        from config import DATABASE_NAME
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM settings WHERE key = 'shop_status'")
+            result = cursor.fetchone()
+            return result[0] if result else 'open'
+    except:
+        return 'open'

@@ -4,18 +4,8 @@ from telebot import types
 from database import get_all_items, get_item_by_id
 from datetime import datetime
 from config import ADMIN_ID
+from database import get_shop_status
 import pytz
-
-def get_shop_status():
-    import sqlite3
-    try:
-        with sqlite3.connect(DATABASE_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT value FROM settings WHERE key = 'shop_status'")
-            result = cursor.fetchone()
-            return result[0] if result else 'open'
-    except:
-        return 'open'
 
 def is_shop_open():
     # မြန်မာနိုင်ငံရဲ့ အချိန်ဇုန်ကို သတ်မှတ်ပါ
