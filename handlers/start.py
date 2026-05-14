@@ -3,6 +3,8 @@ from telebot import types
 import datetime
 from config import YOUR_CHANNEL_ID, SUPPORT_URL
 from database import add_user, get_user
+from shop import get_shop_status
+from config import ADMIN_ID
 
 def check_subscription(user_id, bot):
     """User က Channel ကို Join ထားခြင်း ရှိ/မရှိ စစ်ဆေးခြင်း"""
@@ -57,14 +59,28 @@ def send_help(message, bot):
         bot.send_message(message.chat.id, help_text, reply_markup=markup)
 
 def init_start_handlers(bot):
-    """Handler အားလုံးကို Register လုပ်ခြင်း"""
-    
     @bot.message_handler(commands=["start"])
     def start_handler(message):
         user_id = message.from_user.id
         first_name = message.from_user.first_name
+
+        # ၁။ Maintenance Mode စစ်ဆေးခြင်း (Admin မဟုတ်သူများကိုသာ ပိတ်မည်)
+        status = get_shop_status()
+        if status == 'maintenance' and str(user_id) != str(ADMIN_ID):
+            maintenance_text = (
+                "🛠 <b>Bot is Under Maintenance</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n\n"
+                "ပိုမိုကောင်းမွန်သော ဝန်ဆောင်မှုများ ပေးနိုင်ရန် Bot ကို ခေတ္တပြုပြင်နေပါသည်၊၊\n\n"
+                "Admin ဘက်မှ ပြန်လည်ဖွင့်လှစ်ပေးသည်အထိ ခေတ္တစောင့်ဆိုင်းပေးပါရန် မေတ္တာရပ်ခံအပ်ပါတယ်ဗျာ၊၊ 🙏\n\n"
+                "👨‍💻 <b>Support:</b> @independence_N"
+            )
+            bot.send_message(message.chat.id, maintenance_text, parse_mode='HTML')
+            return # ဒီမှာတင် ရပ်လိုက်မည်
+
+        # ၂။ ပုံမှန် Start Logic (User အသစ်မှတ်ခြင်းနှင့် Menu ပြခြင်း)
         if not get_user(user_id):
             add_user(user_id, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        
         show_home_menu(user_id, first_name, bot)
 
     @bot.message_handler(commands=["home"])

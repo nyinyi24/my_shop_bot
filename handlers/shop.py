@@ -32,18 +32,6 @@ def init_shop_handlers(bot):
     def shop_callback(call):
         status = get_shop_status()
 
-        # ၁။ Maintenance Mode စစ်ခြင်း
-        if status == 'maintenance':
-            maintenance_text = (
-                "🛠 <b>Bot Maintenance</b>\n"
-                "━━━━━━━━━━━━━━━━━━\n\n"
-                "ပိုမိုကောင်းမွန်သော ဝန်ဆောင်မှုများ ပေးနိုင်ရန် Bot ကို ခေတ္တပြုပြင်နေပါသည်၊၊\n\n"
-                "ခေတ္တစောင့်ဆိုင်းပေးပါရန် မေတ္တာရပ်ခံအပ်ပါတယ်ဗျာ၊၊ 🙏"
-            )
-            bot.answer_callback_query(call.id, "ပြုပြင်ထိန်းသိမ်းနေပါသည်", show_alert=True)
-            bot.edit_message_text(maintenance_text, call.message.chat.id, call.message.message_id, parse_mode='HTML')
-            return
-
         # ၂။ Admin က Manual ပိတ်ထားခြင်း (/close) စစ်ခြင်း
         if status == 'close':
             admin_closed_text = (

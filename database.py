@@ -176,3 +176,14 @@ def get_order_details(order_id):
     except Exception as e:
         print(f"Error getting order details: {e}")
         return None
+    
+def reduce_gw_stock(item_id):
+    import sqlite3
+    with sqlite3.connect(DATABASE_NAME) as conn:
+        cursor = conn.cursor()
+        # Stock ကို တစ်ခုလျှော့မယ်
+        cursor.execute("UPDATE gw_items SET stock = stock - 1 WHERE gw_item_id = ?", (item_id,))
+        
+        # အကယ်၍ Stock က 0 ဖြစ်သွားရင် is_used ကို 1 ပြောင်းပေးမယ် (Safety အတွက်ပါ)
+        cursor.execute("UPDATE gw_items SET is_used = 1 WHERE gw_item_id = ? AND stock <= 0", (item_id,))
+        conn.commit()

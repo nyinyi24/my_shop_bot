@@ -3,7 +3,7 @@ from telebot import types
 import datetime
 from database import (
     get_all_gw_item_types, get_user_last_gw_claim, 
-    add_gw_claim, get_available_gw_items_by_type, mark_gw_item_as_used
+    add_gw_claim, get_available_gw_items_by_type, reduce_gw_stock
 )
 
 def init_giveaway_handlers(bot):
@@ -95,18 +95,31 @@ def init_giveaway_handlers(bot):
     # ၂။ ပစ္စည်းရှိမရှိ စစ်ဆေးခြင်း
         item = get_available_gw_items_by_type(item_type)
         if item:
+            # item list ထဲက index တွေအရ:
+            # item[0]: id, item[1]: name, item[2]: content, item[4]: stock, item[5]: rules
+            item_id = item[0]
+            item_content = item[2]
+            item_rules = item[5] if len(item) > 5 and item[5] else "မည်သူ့ကိုမျှ မမျှဝေပါနှင့်၊၊"
+
             # အောင်မြင်လျှင် ပစ္စည်းပေးမည်
             delivery_text = (
-                "🎉 <b>Congratulations!</b>\n\n"
-                f"📦 <b>{item_type}</b> ရရှိပါပြီ:\n\n"
-                f"<code>{item[2]}</code>\n\n"
+                "🎉 <b>Congratulations!</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n\n"
+                f"🎁 <b>{item_type}</b> ရရှိပါပြီ:\n\n"
+                f"🔑 <b>Content:</b> <code>{item_content}</code>\n\n"
+                f"⚠️ <b>စည်းကမ်းချက်များ:</b>\n"
+                f"<i>{item_rules}</i>\n\n"
+                "━━━━━━━━━━━━━━━━━━\n"
                 "⚠️ ဤအချက်အလက်ကို သေချာစွာ သိမ်းဆည်းထားပါ၊၊ ၁ ပတ်လျှင် တစ်ကြိမ်သာ ယူခွင့်ရှိပါသည်၊၊"
             )
             
             bot.send_message(user_id, delivery_text, parse_mode='HTML')
             
-            # Database status များ update လုပ်ခြင်း
-            mark_gw_item_as_used(item[0])
+            # --- Database update လုပ်ခြင်း ---
+            # ၁။ Stock ကို တစ်ခု လျှော့ပေးမည်
+            reduce_gw_stock(item_id) 
+            
+            # ၂။ User ရဲ့ Claim history ကို မှတ်မည်
             add_gw_claim(user_id, now.strftime("%Y-%m-%d %H:%M:%S"))
             
             bot.answer_callback_query(call.id, "✅ အောင်မြင်စွာ ရယူပြီးပါပြီ၊၊")
