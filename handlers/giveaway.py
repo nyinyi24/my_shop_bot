@@ -1,10 +1,11 @@
 import telebot
 from telebot import types
 import datetime
+from .shop import get_shop_status
 from config import ADMIN_ID
 from database import (
     get_all_gw_item_types, get_user_last_gw_claim, 
-    add_gw_claim, get_available_gw_items_by_type, reduce_gw_stock,get_shop_status
+    add_gw_claim, get_available_gw_items_by_type, reduce_gw_stock
 )
 
 def init_giveaway_handlers(bot):

@@ -4,7 +4,8 @@ import datetime
 import re
 import sqlite3
 from config import ADMIN_ID, SUPPORT_URL
-from database import get_item_by_id, update_order_status, create_order, get_order_details, update_order_delivery, pull_account_from_stock_by_name, get_user_orders, get_shop_status
+from .shop import get_shop_status
+from database import get_item_by_id, update_order_status, create_order, get_order_details, update_order_delivery, pull_account_from_stock_by_name, get_user_orders
 
 # ယာယီ အော်ဒါမှတ်တမ်းများကို သိမ်းရန်
 pending_orders = {}
