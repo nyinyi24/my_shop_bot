@@ -3,6 +3,7 @@ from config import DATABASE_NAME
 from telebot import types
 from database import get_all_items, get_item_by_id
 from datetime import datetime
+from config import ADMIN_ID
 import pytz
 
 def get_shop_status():
@@ -31,6 +32,15 @@ def init_shop_handlers(bot):
     @bot.callback_query_handler(func=lambda call: call.data == 'shop')
     def shop_callback(call):
         status = get_shop_status()
+
+        # ၁။ Maintenance Mode စစ်ခြင်း
+        if get_shop_status() == 'maintenance' and str(call.from_user.id) != str(ADMIN_ID):
+            bot.answer_callback_query(call.id, "🛠 Bot ကို ပြုပြင်နေပါသည်၊၊", show_alert=True)
+            bot.edit_message_text(
+                "🛠 <b>Bot is Under Maintenance</b>\n\nခေတ္တပြုပြင်နေပါသဖြင့် မည်သည့် Feature ကိုမျှ အသုံးပြု၍ မရနိုင်သေးပါ၊၊",
+                call.message.chat.id, call.message.message_id, parse_mode='HTML'
+            )
+        return
 
         # ၂။ Admin က Manual ပိတ်ထားခြင်း (/close) စစ်ခြင်း
         if status == 'close':

@@ -1,9 +1,10 @@
 import telebot
 from telebot import types
 import datetime
+from config import ADMIN_ID
 from database import (
     get_all_gw_item_types, get_user_last_gw_claim, 
-    add_gw_claim, get_available_gw_items_by_type, reduce_gw_stock
+    add_gw_claim, get_available_gw_items_by_type, reduce_gw_stock,get_shop_status
 )
 
 def init_giveaway_handlers(bot):
@@ -32,9 +33,17 @@ def init_giveaway_handlers(bot):
 
     @bot.callback_query_handler(func=lambda call: call.data == 'giveaway')
     def giveaway_callback(call):
+        # Maintenance စစ်ဆေးခြင်း
+        if get_shop_status() == 'maintenance' and str(call.from_user.id) != str(ADMIN_ID):
+            bot.answer_callback_query(call.id, "🛠 Bot ကို ပြုပြင်နေပါသည်၊၊", show_alert=True)
+            bot.edit_message_text(
+                "🛠 <b>Bot is Under Maintenance</b>\n\nခေတ္တပြုပြင်နေပါသဖြင့် မည်သည့် Feature ကိုမျှ အသုံးပြု၍ မရနိုင်သေးပါ၊၊",
+                call.message.chat.id, call.message.message_id, parse_mode='HTML'
+            )
+            return
+        
         user_id = call.from_user.id
         from handlers.start import check_subscription
-        
         # Channel Join မ Join စစ်ဆေးခြင်း
         is_joined = check_subscription(user_id, bot)
         

@@ -4,7 +4,7 @@ import datetime
 import re
 import sqlite3
 from config import ADMIN_ID, SUPPORT_URL
-from database import get_item_by_id, update_order_status, create_order, get_order_details, update_order_delivery, pull_account_from_stock_by_name, get_user_orders
+from database import get_item_by_id, update_order_status, create_order, get_order_details, update_order_delivery, pull_account_from_stock_by_name, get_user_orders, get_shop_status
 
 # ယာယီ အော်ဒါမှတ်တမ်းများကို သိမ်းရန်
 pending_orders = {}
@@ -236,6 +236,15 @@ def init_payment_handlers(bot):
     # ၅။ My Orders ပြသခြင်း
     @bot.callback_query_handler(func=lambda call: call.data == 'my_orders')
     def my_orders(call):
+        # Maintenance စစ်ဆေးခြင်း
+        if get_shop_status() == 'maintenance' and str(call.from_user.id) != str(ADMIN_ID):
+            bot.answer_callback_query(call.id, "🛠 Bot ကို ပြုပြင်နေပါသည်၊၊", show_alert=True)
+            bot.edit_message_text(
+                "🛠 <b>Bot is Under Maintenance</b>\n\nခေတ္တပြုပြင်နေပါသဖြင့် မည်သည့် Feature ကိုမျှ အသုံးပြု၍ မရနိုင်သေးပါ၊၊",
+                call.message.chat.id, call.message.message_id, parse_mode='HTML'
+            )
+            return
+        
         orders = get_user_orders(call.from_user.id)
         markup = types.InlineKeyboardMarkup(row_width=1)
 
