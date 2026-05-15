@@ -58,16 +58,17 @@ def get_shop_status():
         return 'open'
 
 def set_shop_status(status):
-    """ဆိုင်အခြေအနေ (open/close/maintenance) ကို ပြောင်းလဲရန်"""
+    """ဆိုင်ရဲ့ status (open/close/maintenance) ကို database ထဲမှာ update လုပ်ရန်"""
+    import sqlite3
+    from config import DATABASE_NAME
     try:
         with sqlite3.connect(DATABASE_NAME) as conn:
             cursor = conn.cursor()
-            cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_status', ?)", (status,))
+            # settings table ထဲမှာ shop_status key ရှိမရှိ အရင်စစ်ပြီးမှ update လုပ်မယ်
+            cursor.execute("UPDATE settings SET value = ? WHERE key = 'shop_status'", (status,))
             conn.commit()
-            return True
     except Exception as e:
         print(f"Error setting shop status: {e}")
-        return False
 
 # --- Items Functions ---
 
