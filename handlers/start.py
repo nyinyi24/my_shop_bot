@@ -1,9 +1,8 @@
 import telebot
 from telebot import types
 import datetime
-from config import YOUR_CHANNEL_ID, SUPPORT_URL
-from database import add_user, get_user
-from database import get_shop_status
+from config import YOUR_CHANNEL_ID  # SUPPORT_URL ကို start.py တွင် မသုံးသောကြောင့် ဖယ်ရှားထားသည်
+from database import add_user, get_user, get_shop_status
 from config import ADMIN_ID
 
 def check_subscription(user_id, bot):
@@ -17,7 +16,6 @@ def check_subscription(user_id, bot):
 
 def show_home_menu(user_id, first_name, bot):
     """ပင်မ Menu နှင့် Welcome Message ကို ပြသခြင်း"""
-    # Markdown Error မတက်အောင် underscore ရှေ့မှာ \ ခံထားပါသည်
     welcome_text = (
         f"👋 မင်္ဂလာပါ *{first_name}* ရေ...\n\n"
         f"🏰 *ENI Premium Store* မှ နွေးထွေးစွာ ကြိုဆိုပါတယ်ဗျာ။\n\n"
@@ -29,16 +27,15 @@ def show_home_menu(user_id, first_name, bot):
 
     markup = types.InlineKeyboardMarkup(row_width=2)
     markup.add(
-        types.InlineKeyboardButton("🛍️ Shop", callback_data='shop'),
-        types.InlineKeyboardButton("🎁 Giveaway", callback_data='giveaway'),
+        types.InlineKeyboardButton("🛍️ Shop",      callback_data='shop'),
+        types.InlineKeyboardButton("🎁 Giveaway",  callback_data='giveaway'),
         types.InlineKeyboardButton("🛒 My Orders", callback_data='my_orders'),
-        types.InlineKeyboardButton("🎧 Support", url="https://t.me/independence_N")
+        types.InlineKeyboardButton("🎧 Support",   url="https://t.me/independence_N")
     )
-    
+
     try:
         bot.send_message(user_id, welcome_text, reply_markup=markup, parse_mode='Markdown')
-    except:
-        # Error တက်ပါက parse_mode မပါဘဲ ပို့မည်
+    except Exception:
         bot.send_message(user_id, welcome_text, reply_markup=markup)
 
 def send_help(message, bot):
@@ -52,19 +49,20 @@ def send_help(message, bot):
     )
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("💬 Chat with Admin", url="https://t.me/independence_N"))
-    
+
     try:
         bot.send_message(message.chat.id, help_text, reply_markup=markup, parse_mode='Markdown')
-    except:
+    except Exception:
         bot.send_message(message.chat.id, help_text, reply_markup=markup)
 
 def init_start_handlers(bot):
+
     @bot.message_handler(commands=["start"])
     def start_handler(message):
-        user_id = message.from_user.id
+        user_id    = message.from_user.id
         first_name = message.from_user.first_name
 
-        # ၁။ Maintenance Mode စစ်ဆေးခြင်း (Admin မဟုတ်သူများကိုသာ ပိတ်မည်)
+        # Maintenance Mode စစ်ဆေးခြင်း (Admin မဟုတ်သူများကိုသာ ပိတ်မည်)
         status = get_shop_status()
         if status == 'maintenance' and str(user_id) != str(ADMIN_ID):
             maintenance_text = (
@@ -75,12 +73,12 @@ def init_start_handlers(bot):
                 "👨‍💻 <b>Support:</b> @independence_N"
             )
             bot.send_message(message.chat.id, maintenance_text, parse_mode='HTML')
-            return # ဒီမှာတင် ရပ်လိုက်မည်
+            return
 
-        # ၂။ ပုံမှန် Start Logic (User အသစ်မှတ်ခြင်းနှင့် Menu ပြခြင်း)
+        # User အသစ် မှတ်ပုံတင်ခြင်း
         if not get_user(user_id):
             add_user(user_id, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-        
+
         show_home_menu(user_id, first_name, bot)
 
     @bot.message_handler(commands=["home"])
@@ -90,6 +88,8 @@ def init_start_handlers(bot):
     @bot.message_handler(commands=["help"])
     def help_handler(message):
         send_help(message, bot)
+
+    # home callback ကို main.py တွင် universal_back_home အဖြစ် တစ်ခုတည်းသာ register လုပ်ထားသည်
 
     @bot.callback_query_handler(func=lambda call: call.data == 'verify_subscription')
     def verify_subscription_callback(call):

@@ -5,23 +5,20 @@ DATABASE_NAME = 'shop.db'
 def init_db():
     with sqlite3.connect(DATABASE_NAME) as conn:
         cursor = conn.cursor()
-        # Users Table
+        
+        # 1. Users Table
         cursor.execute('''CREATE TABLE IF NOT EXISTS users 
             (user_id INTEGER PRIMARY KEY, join_date TEXT, role TEXT DEFAULT 'user')''')
         
-        # Items Table (ပစ္စည်းအမည်နှင့် ဈေးနှုန်းပြရန်)
+        # 2. Items Table
         cursor.execute('''CREATE TABLE IF NOT EXISTS items 
             (item_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, details TEXT, price REAL, stock INTEGER, type TEXT)''')
         
-        # Item Stocks Table (ရောင်းမည့် Mail:Pass များ သိမ်းရန်)
+        # 3. Item Stocks Table
         cursor.execute('''CREATE TABLE IF NOT EXISTS item_stocks 
             (stock_id INTEGER PRIMARY KEY AUTOINCREMENT, item_name TEXT, account_info TEXT, is_sold BOOLEAN DEFAULT FALSE)''')
         
-        # Orders Table
-        cursor.execute('''CREATE TABLE IF NOT EXISTS orders 
-            (order_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, item_name TEXT, quantity INTEGER, payment_method TEXT, status TEXT, timestamp TEXT)''')
-        
-        # user Orders detail Table
+        # 4. Orders Table (delivered_data အပါအဝင် တစ်ခါတည်းဆောက်သည်)
         cursor.execute('''CREATE TABLE IF NOT EXISTS orders 
             (order_id INTEGER PRIMARY KEY AUTOINCREMENT, 
              user_id INTEGER, 
@@ -31,30 +28,48 @@ def init_db():
              status TEXT, 
              timestamp TEXT,
              delivered_data TEXT)''')
-        conn.commit()
-
-        # Giveaway Tables
+        
+        # 5. Giveaway Tables (stock column ထည့်သွင်းထားသည်)
         cursor.execute('''CREATE TABLE IF NOT EXISTS gw_items 
-            (gw_item_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, content TEXT, is_used BOOLEAN DEFAULT FALSE)''')
+            (gw_item_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, content TEXT, stock INTEGER DEFAULT 0, is_used BOOLEAN DEFAULT FALSE)''')
+            
         cursor.execute('''CREATE TABLE IF NOT EXISTS gw_claims 
             (claim_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, claim_date TEXT)''')
 
+        # 6. Settings Table (Shop Status အတွက် လိုအပ်သည်)
+        cursor.execute('''CREATE TABLE IF NOT EXISTS settings 
+            (key TEXT PRIMARY KEY, value TEXT)''')
+        
+        # Default settings ထည့်သွင်းခြင်း
+        cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('shop_status', 'open')")
+
         conn.commit()
 
-def get_item_by_id(item_id):
-    """ID နဲ့ ပစ္စည်းအချက်အလက်ကို ယူရန်"""
+# --- Items Functions ---
+
+def get_all_items():
     with sqlite3.connect(DATABASE_NAME) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT name FROM items WHERE item_id = ?", (item_id,))
-        res = cursor.fetchone()
-        return res[0] if res else None
+        cursor.execute("SELECT * FROM items")
+        return cursor.fetchall()
+
+def get_item_by_id(item_id):
+    """ID နဲ့ ပစ္စည်းအချက်အလက် (Row တစ်ခုလုံး) ကို ယူရန်"""
+    with sqlite3.connect(DATABASE_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM items WHERE item_id = ?", (item_id,))
+        return cursor.fetchone()
+
+def get_item_name_by_id(item_id):
+    """ID နဲ့ ပစ္စည်းအမည်ကိုပဲ ယူရန် (လိုအပ်ပါက သုံးနိုင်ရန် ခွဲထုတ်ထားသည်)"""
+    item = get_item_by_id(item_id)
+    return item[1] if item else None
+
+# --- Stocks Functions ---
 
 def pull_account_from_stock_by_name(item_name):
-    """နာမည်နဲ့ အကောင့်ကို stock ထဲက နှိုက်ယူရန် (အရှေ့က code ကို နည်းနည်း ပြန်ပြင်ထားသည်)"""
-    import sqlite3
     with sqlite3.connect(DATABASE_NAME, check_same_thread=False, timeout=10) as conn:
         cursor = conn.cursor()
-        # TRIM သုံးပြီး အသေအချာ ရှာမယ်
         cursor.execute("""
             SELECT stock_id, account_info FROM item_stocks 
             WHERE TRIM(item_name) = TRIM(?) COLLATE NOCASE 
@@ -69,9 +84,10 @@ def pull_account_from_stock_by_name(item_name):
             return acc_info
         return None
 
+# --- User Functions ---
+
 def add_user(user_id, join_date):
     try:
-        # with သုံးခြင်းဖြင့် အလုပ်ပြီးတာနဲ့ connection ကို အလိုအလျောက် ပိတ်ပေးမှာပါ
         with sqlite3.connect(DATABASE_NAME, timeout=10) as conn:
             cursor = conn.cursor()
             cursor.execute("INSERT OR IGNORE INTO users (user_id, join_date) VALUES (?, ?)", (user_id, join_date))
@@ -85,20 +101,7 @@ def get_user(user_id):
         cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
         return cursor.fetchone()
 
-def get_all_items():
-    with sqlite3.connect(DATABASE_NAME) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM items")
-        return cursor.fetchall()
-
-def get_item_by_id(item_id):
-    import sqlite3
-    with sqlite3.connect(DATABASE_NAME) as conn:
-        cursor = conn.cursor()
-        # item_id Column နာမည် မှန်မမှန် ပြန်စစ်ပေးပါ (အချို့နေရာမှာ id ဟု သုံးတတ်သည်)
-        cursor.execute("SELECT * FROM items WHERE item_id = ?", (item_id,))
-        item = cursor.fetchone()
-        return item
+# --- Orders Functions ---
 
 def create_order(user_id, item_name, quantity, payment_method, status, timestamp):
     with sqlite3.connect(DATABASE_NAME) as conn:
@@ -126,6 +129,18 @@ def get_user_orders(user_id):
         cursor.execute("SELECT * FROM orders WHERE user_id = ? AND status = 'Success'", (user_id,))
         return cursor.fetchall()
 
+def get_order_details(order_id):
+    try:
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,))
+            return cursor.fetchone()
+    except Exception as e:
+        print(f"Error getting order details: {e}")
+        return None
+
+# --- Giveaway Functions ---
+
 def get_all_gw_item_types():
     with sqlite3.connect(DATABASE_NAME) as conn:
         cursor = conn.cursor()
@@ -133,13 +148,9 @@ def get_all_gw_item_types():
         return [row[0] for row in cursor.fetchall()]
 
 def get_user_last_gw_claim(user_id):
-    """User နောက်ဆုံး Giveaway ယူခဲ့သည့် အချိန်ကို ယူရန် (Weekly Logic အတွက်)"""
-    import sqlite3
     try:
         with sqlite3.connect(DATABASE_NAME) as conn:
             cursor = conn.cursor()
-            # gw_claims table ထဲမှာ user_id အလိုက် နောက်ဆုံးယူခဲ့တဲ့ အချိန် (claim_date) ကို ယူမယ်
-            # အချိန်အလိုက် စီပြီး (ORDER BY) အပေါ်ဆုံးက တစ်ခု (LIMIT 1) ကိုပဲ ယူမှာပါ
             cursor.execute("SELECT claim_date FROM gw_claims WHERE user_id = ? ORDER BY claim_date DESC LIMIT 1", (user_id,))
             res = cursor.fetchone()
             return res[0] if res else None
@@ -165,34 +176,17 @@ def mark_gw_item_as_used(gw_item_id):
         cursor.execute("UPDATE gw_items SET is_used = TRUE WHERE gw_item_id = ?", (gw_item_id,))
         conn.commit()
 
-def get_order_details(order_id):
-    """အော်ဒါ ID တစ်ခုချင်းစီရဲ့ အချက်အလက်အားလုံး (delivered_data အပါအဝင်) ကို ယူရန်"""
-    import sqlite3
-    try:
-        with sqlite3.connect(DATABASE_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM orders WHERE order_id = ?", (order_id,))
-            return cursor.fetchone()
-    except Exception as e:
-        print(f"Error getting order details: {e}")
-        return None
-    
 def reduce_gw_stock(item_id):
-    import sqlite3
     with sqlite3.connect(DATABASE_NAME) as conn:
         cursor = conn.cursor()
-        # Stock ကို တစ်ခုလျှော့မယ်
         cursor.execute("UPDATE gw_items SET stock = stock - 1 WHERE gw_item_id = ?", (item_id,))
-        
-        # အကယ်၍ Stock က 0 ဖြစ်သွားရင် is_used ကို 1 ပြောင်းပေးမယ် (Safety အတွက်ပါ)
         cursor.execute("UPDATE gw_items SET is_used = 1 WHERE gw_item_id = ? AND stock <= 0", (item_id,))
         conn.commit()
 
+# --- Settings Functions ---
+
 def get_shop_status():
-    import sqlite3
     try:
-        # DATABASE_NAME ကို config ကနေ import လုပ်ထားဖို့ လိုပါမယ်
-        from config import DATABASE_NAME
         with sqlite3.connect(DATABASE_NAME) as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT value FROM settings WHERE key = 'shop_status'")

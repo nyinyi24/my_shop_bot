@@ -1,6 +1,11 @@
 # config.py
-API_TOKEN = "8510828516:AAGDbytR4QJRCyKz1lqKErihsgt7PtJqSfg"
-ADMIN_ID = 7656340616
-YOUR_CHANNEL_ID = -1003744771199
-SUPPORT_URL = "https://t.me/independence_N"
-DATABASE_NAME = 'shop.db'
+import os
+from dotenv import load_dotenv
+
+load_dotenv()  # .env ဖိုင်ကို ဖတ်မည်
+
+API_TOKEN       = os.environ.get('BOT_TOKEN', '')
+ADMIN_ID        = int(os.environ.get('ADMIN_ID', '0'))
+YOUR_CHANNEL_ID = int(os.environ.get('CHANNEL_ID', '0'))
+SUPPORT_URL     = os.environ.get('SUPPORT_URL', 'https://t.me/independence_N')
+DATABASE_NAME   = 'shop.db'
