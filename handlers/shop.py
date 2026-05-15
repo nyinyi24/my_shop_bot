@@ -2,7 +2,7 @@ import telebot
 from telebot import types
 from datetime import datetime
 import pytz
-from config import ADMIN_ID, DATABASE_NAME
+from config import ADMIN_ID
 from database import get_all_items, get_item_by_id, get_shop_status
 
 def is_shop_open():
