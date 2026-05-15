@@ -18,7 +18,7 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS item_stocks 
             (stock_id INTEGER PRIMARY KEY AUTOINCREMENT, item_name TEXT, account_info TEXT, is_sold BOOLEAN DEFAULT FALSE)''')
         
-        # 4. Orders Table (delivered_data အပါအဝင် တစ်ခါတည်းဆောက်သည်)
+        # 4. Orders Table
         cursor.execute('''CREATE TABLE IF NOT EXISTS orders 
             (order_id INTEGER PRIMARY KEY AUTOINCREMENT, 
              user_id INTEGER, 
@@ -29,21 +29,45 @@ def init_db():
              timestamp TEXT,
              delivered_data TEXT)''')
         
-        # 5. Giveaway Tables (stock column ထည့်သွင်းထားသည်)
+        # 5. Giveaway Tables
         cursor.execute('''CREATE TABLE IF NOT EXISTS gw_items 
             (gw_item_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, content TEXT, stock INTEGER DEFAULT 0, is_used BOOLEAN DEFAULT FALSE)''')
             
         cursor.execute('''CREATE TABLE IF NOT EXISTS gw_claims 
             (claim_id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, claim_date TEXT)''')
 
-        # 6. Settings Table (Shop Status အတွက် လိုအပ်သည်)
+        # 6. Settings Table
         cursor.execute('''CREATE TABLE IF NOT EXISTS settings 
             (key TEXT PRIMARY KEY, value TEXT)''')
         
-        # Default settings ထည့်သွင်းခြင်း
+        # Default settings
         cursor.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('shop_status', 'open')")
 
         conn.commit()
+
+# --- Settings Functions ---
+
+def get_shop_status():
+    try:
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM settings WHERE key = 'shop_status'")
+            result = cursor.fetchone()
+            return result[0] if result else 'open'
+    except:
+        return 'open'
+
+def set_shop_status(status):
+    """ဆိုင်အခြေအနေ (open/close/maintenance) ကို ပြောင်းလဲရန်"""
+    try:
+        with sqlite3.connect(DATABASE_NAME) as conn:
+            cursor = conn.cursor()
+            cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('shop_status', ?)", (status,))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"Error setting shop status: {e}")
+        return False
 
 # --- Items Functions ---
 
@@ -54,16 +78,10 @@ def get_all_items():
         return cursor.fetchall()
 
 def get_item_by_id(item_id):
-    """ID နဲ့ ပစ္စည်းအချက်အလက် (Row တစ်ခုလုံး) ကို ယူရန်"""
     with sqlite3.connect(DATABASE_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM items WHERE item_id = ?", (item_id,))
         return cursor.fetchone()
-
-def get_item_name_by_id(item_id):
-    """ID နဲ့ ပစ္စည်းအမည်ကိုပဲ ယူရန် (လိုအပ်ပါက သုံးနိုင်ရန် ခွဲထုတ်ထားသည်)"""
-    item = get_item_by_id(item_id)
-    return item[1] if item else None
 
 # --- Stocks Functions ---
 
@@ -182,15 +200,3 @@ def reduce_gw_stock(item_id):
         cursor.execute("UPDATE gw_items SET stock = stock - 1 WHERE gw_item_id = ?", (item_id,))
         cursor.execute("UPDATE gw_items SET is_used = 1 WHERE gw_item_id = ? AND stock <= 0", (item_id,))
         conn.commit()
-
-# --- Settings Functions ---
-
-def get_shop_status():
-    try:
-        with sqlite3.connect(DATABASE_NAME) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT value FROM settings WHERE key = 'shop_status'")
-            result = cursor.fetchone()
-            return result[0] if result else 'open'
-    except:
-        return 'open'
