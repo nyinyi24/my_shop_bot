@@ -103,7 +103,7 @@ def init_giveaway_handlers(bot):
             # item columns: gw_item_id(0), name(1), content(2), stock(3), rules(4), is_used(5)
             item_id      = item[0]
             item_content = item[2]
-            item_rules   = item[4] if len(item) > 4 and item[4] else "မည်သူ့ကိုမျှ မမျှဝေပါနှင့်၊၊"
+            item_rules = item[5] if len(item) > 5 and item[5] else "မည်သူ့ကိုမျှ မမျှဝေပါနှင့်၊၊"
 
             delivery_text = (
                 "🎉 <b>Congratulations!</b>\n"
