@@ -119,8 +119,12 @@ def init_giveaway_handlers(bot):
             bot.send_message(user_id, delivery_text, parse_mode='HTML')
 
             # Stock လျှော့ပြီး claim မှတ်သားမည်
-            reduce_gw_stock(item_id)
-            add_gw_claim(user_id, now.strftime("%Y-%m-%d %H:%M:%S"))
+            try:
+                reduce_gw_stock(item_id)
+                add_gw_claim(user_id, now.strftime("%Y-%m-%d %H:%M:%S"))
+                print(f"✅ GW claimed: user={user_id}, item_id={item_id}")
+            except Exception as e:
+                print(f"❌ GW DB Error: {e}")
 
             bot.answer_callback_query(call.id, "✅ အောင်မြင်စွာ ရယူပြီးပါပြီ၊၊")
         else:
