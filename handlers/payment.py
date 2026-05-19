@@ -249,6 +249,7 @@ def init_payment_handlers(bot):
     def process_manual_delivery(message, target_user_id, item_name, order_id):
         """Admin ပို့လိုက်သော account info ကို User ဆီ တိုက်ရိုက်ပို့ပေးမည်"""
         account_data = message.text.strip()
+        target_user_id = int(target_user_id)
 
         # Database update
         update_order_status(order_id, "Success")
