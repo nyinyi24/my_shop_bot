@@ -67,22 +67,31 @@ def init_shop_handlers(bot):
             bot.edit_message_text(admin_closed_text, call.message.chat.id, call.message.message_id, parse_mode='HTML')
             return
 
-        # ၃။ အချိန်ဇယားအရ ဆိုင်ပိတ်ချိန် စစ်ခြင်း
-        if not is_shop_open() and str(user_id) != str(ADMIN_ID):
+        # ၃။ ပုံမှန် အိပ်ချိန်/နားချိန် (အချိန်ဇယားအရ) စစ်ခြင်း
+        if not is_shop_open():
             time_closed_text = (
-                "🌙 <b>Shop is Currently Closed</b>\n"
+                "🌙 <b>Shop is Currently Closed (Pre-Order Available)</b>\n"
                 "━━━━━━━━━━━━━━━━━━\n\n"
-                "ယခုအချိန်သည် Admin အနားယူချိန် ဖြစ်ပါသဖြင့် ဆိုင်ခေတ္တ ပိတ်ထားပါသည်၊၊\n\n"
+                "ယခုအချိန်သည် Admin အနားယူချိန် ဖြစ်ပါသဖြင့် ပုံမှန် Auto-Delivery စနစ်ကို ခေတ္တပိတ်ထားပါသည်၊၊\n\n"
                 "🕒 <b>ဆိုင်ဖွင့်ချိန်:</b> 09:00 AM - 09:00 PM\n\n"
-                "မနက် ၉ နာရီ ကျမှ ပြန်လည် ဝယ်ယူနိုင်ပါမည်။ 😊"
+                "💡 <b>ဒါပေမဲ့ စိတ်မပူပါနဲ့ခင်ဗျာ!</b>\n"
+                "သင်အခုပဲ <b>Pre-Order (ကြိုတင်မှာယူခြင်း)</b> စနစ်ဖြင့် ငွေပေးချေပြီး အော်ဒါတင်ထားနိုင်ပါတယ်၊၊ "
+                "မနက်ဖြန် ဆိုင်ဖွင့်တာနဲ့ Admin ဘက်က အကောင့်များကို ဦးစားပေးစနစ်ဖြင့် ချက်ချင်း ပို့ဆောင်ပေးသွားမှာ ဖြစ်ပါသည်ဗျာ၊၊ 🙏\n\n"
+                "👇 ကြိုတင်မှာယူလိုပါက အောက်ကခလုတ်ကို နှိပ်ပြီး ဆက်သွားနိုင်ပါတယ်-"
             )
-            bot.answer_callback_query(call.id, "ဆိုင်ပိတ်ချိန်ဖြစ်ပါသည်", show_alert=True)
-            bot.edit_message_text(time_closed_text, call.message.chat.id, call.message.message_id, parse_mode='HTML')
+            
+            # အော်ဒါဆက်တင်ဖို့အတွက် Catalog ကို လှမ်းပြမည့် ခလုတ်ထည့်ပေးမယ်
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("📝 Pre-Order တင်ရန် ဆက်သွားမည်", callback_data="force_open_catalog"))
+            markup.add(types.InlineKeyboardButton("🏠 Back to Home", callback_data='home'))
+            
+            bot.answer_callback_query(call.id, "ဆိုင်ပိတ်ချိန်ဖြစ်သော်လည်း Pre-Order တင်နိုင်ပါသည်", show_alert=True)
+            bot.edit_message_text(time_closed_text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode='HTML')
             return
 
-        # ၄။ Catalog ပြခြင်း
-        bot.answer_callback_query(call.id)
-        show_shop_catalog(user_id, bot, call.message.message_id)
+        # ၄။ အပေါ်က အခြေအနေတွေ အကုန်ကင်းရှင်းမှ Catalog ပြခြင်း
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+        show_shop_catalog(call.from_user.id, bot)
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith('item_detail_'))
     def show_item_detail(call):
@@ -114,3 +123,8 @@ def init_shop_handlers(bot):
         except Exception as e:
             print(f"Error in show_item_detail: {e}")
             bot.answer_callback_query(call.id, "Error occurred!")
+
+    @bot.callback_query_handler(func=lambda call: call.data == 'force_open_catalog')
+    def force_catalog_callback(call):
+        bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.message_id)
+        show_shop_catalog(call.from_user.id, bot)

@@ -141,23 +141,40 @@ def init_payment_handlers(bot):
             types.InlineKeyboardButton("❌ Reject", callback_data=f"admin_reject_{order_data['order_id']}")
         )
 
+        # ဆိုင်ပိတ်ချိန်ဆိုရင် Admin Message မှာ Pre-Order Alert လို့ ပြောင်းပြမယ်
+        from shop import is_shop_open
+        alert_title = "🔔 *New Order Alert!*" if is_shop_open() else "🌙 *New Pre-Order Alert (ညဘက်မှာယူမှု)!*"
+
         admin_text = (
-            f"🔔 *New Order Alert!*\n\n"
+            f"{alert_title}\n\n"
             f"👤 User ID: `{user_id}`\n"
             f"📦 Item: {order_data['item_name']}\n"
             f"💰 Amount: {order_data['total']:,} MMK\n"
             f"💳 Method: {order_data['method']}\n"
             f"🆔 Order ID: {order_data['order_id']}"
         )
-        # Admin ထံ ပို့ခြင်း
         bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=admin_text, reply_markup=markup, parse_mode='Markdown')
-        success_text = (
-            "✅ Screenshot ပေးပို့မှု အောင်မြင်ပါသည်၊၊\n\n"
-            "ကျွန်ုပ်တို့၏ Admin မှ သင်၏ ငွေလွှဲပြေစာကို စစ်ဆေးနေပါပြီ၊၊ "
-            "စစ်ဆေးပြီးပါက အကောင့်အချက်အလက်များကို ဤနေရာသို့ အလိုအလျောက် ပို့ဆောင်ပေးသွားမည် ဖြစ်ပါသည်၊၊\n\n"
-            "⏳ ခေတ္တစောင့်ဆိုင်းပေးပါရန် မေတ္တာရပ်ခံအပ်ပါသည်၊၊"
+        
+        # User ဆီ ပြမည့်စာသားကို ဆိုင်ဖွင့်/ပိတ်ပေါ်မူတည်ပြီး ခွဲပြမယ်
+        if is_shop_open():
+            success_text = (
+                "✅ <b>Screenshot ပေးပို့မှု အောင်မြင်ပါသည်၊၊</b>\n\n"
+                "ကျွန်ုပ်တို့၏ Admin မှ သင်၏ ငွေလွှဲပြေစာကို စစ်ဆေးနေပါပြီ၊၊ "
+                "စစ်ဆေးပြီးပါက အကောင့်အချက်အလက်များကို ဤနေရာသို့ အလိုအလျောက် ပို့ဆောင်ပေးသွားမည် ဖြစ်ပါသည်၊၊\n\n"
+                "⏳ ခေတ္တစောင့်ဆိုင်းပေးပါရန် မေတ္တာရပ်ခံအပ်ပါသည်၊၊"
             )
-        bot.send_message(user_id, success_text)
+        else:
+            success_text = (
+                "📝 <b>Pre-Order မှာယူမှု အောင်မြင်ပါသည်ဗျာ၊၊</b>\n"
+                "━━━━━━━━━━━━━━━━━━\n\n"
+                "ငွေလွှဲပြေစာ Screenshot ပေးပို့မှု အောင်မြင်ပါသည်၊၊ ယခုအော်ဒါသည် ဆိုင်ပိတ်ချိန်အတွင်း "
+                "မှာယူထားခြင်းဖြစ်သဖြင့် မနက်ဖြန် ဆိုင်ပြန်ဖွင့်ချိန် (မနက် ၉ နာရီ) ကျမှသာ Admin ဘက်က စစ်ဆေးပြီး "
+                "<b>ပစ္စည်းကို အမြန်ဆုံး လှမ်းပို့ပေးသွားမှာ ဖြစ်ပါတယ်ခင်ဗျာ၊၊</b>\n\n"
+                "🙏 အနားယူချိန်စနစ်ကြောင့် ခေတ္တစောင့်ဆိုင်းရခြင်းအတွက် အနူးအညွတ် တောင်းပန်အပ်ပါသည်၊၊ "
+                "ဝယ်ယူအားပေးမှုကို အထူးပင် ကျေးဇူးတင်ရှိပါသည်ဗျာ၊၊ 😊"
+            )
+            
+        bot.send_message(user_id, success_text, parse_mode='HTML')
         del pending_orders[user_id]
 
     # ၄။ Admin ၏ ဆုံးဖြတ်ချက် (Approve/Reject)
