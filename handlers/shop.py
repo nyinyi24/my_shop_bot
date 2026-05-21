@@ -110,8 +110,19 @@ def show_shop_catalog(user_id, bot):
 
     for item in items:
         item_id = item[0]
-        btn_text = f"{item[1]} - {item[3]} MMK"
-        # တိုက်ရိုက် buy_ သို့မဟုတ် item_detail_ ပြောင်းလဲနိုင်သည် (လက်ရှိ buy_ သို့ တိုက်ရိုက်လွှဲထားသည်)
+        item_name = item[1]
+        price = item[3]
+        stock = item[4] # Database ထဲက stock အရေအတွက်ကို ယူခြင်း
+        
+        # ဈေးနှုန်းကို ကော်မာ ( , ) ခံပြီး သတ်သတ်မှတ်မှတ်ပြရန်
+        formatted_price = f"{int(price):,}"
+        
+        # 🌟 Stock ပေါ်မူတည်ပြီး စာသားကို အရင်တုန်းကလို ပြန်ပြင်ဆင်ခြင်း
+        if stock > 0:
+            btn_text = f"📦 {item_name} - {formatted_price} MMK (Stock: {stock} ခု)"
+        else:
+            btn_text = f"❌ {item_name} - (Stock ပြတ်နေပါသည်)"
+            
         markup.add(types.InlineKeyboardButton(btn_text, callback_data=f"buy_{item_id}"))
     
     markup.add(types.InlineKeyboardButton("🏠 Back to Home", callback_data='home'))
