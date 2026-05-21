@@ -5,7 +5,11 @@ import re
 import sqlite3
 from config import ADMIN_ID, SUPPORT_URL
 from database import get_shop_status
-from database import get_item_by_id, update_order_status, create_order, get_order_details, update_order_delivery, pull_account_from_stock_by_name, get_user_orders, process_manual_delivery
+from database import (
+    get_item_by_id, update_order_status, create_order, 
+    get_order_details, update_order_delivery, 
+    pull_account_from_stock_by_name, get_user_orders
+) # <-- process_manual_delivery ကို ဖြုတ်လိုက်ပါပြီ
 
 # ယာယီ အော်ဒါမှတ်တမ်းများကို သိမ်းရန်
 pending_orders = {}
@@ -177,18 +181,149 @@ def init_payment_handlers(bot):
         bot.send_message(user_id, success_text, parse_mode='HTML')
         del pending_orders[user_id]
 
-    # ၄။ Admin ၏ ဆုံးဖြတ်ချက် (Approve/Reject)
+    # =====================================================================
+    # 🌟 FEATURE (၁): STOCK ကုန်နေပါက ADMIN ရိုက်သမျှစာကို စောင့်ဖတ်ပြီး ပို့မည့်စနစ်
+    # =====================================================================
+    def process_manual_delivery(message, bot, target_user_id, item_name, order_id, original_caption, admin_msg_id):
+        if str(message.from_user.id) != str(ADMIN_ID): return
+        
+        account_data = message.text.strip()
+        
+        # Database အား အောင်မြင်ကြောင်း အခြေအနေပြောင်းလဲခြင်း
+        update_order_status(order_id, "Success")
+        update_order_delivery(order_id, account_data)
+        
+        # Admin Chat ရှိ Message အား အခြေအနေ ပြောင်းလဲခြင်း
+        try:
+            bot.edit_message_caption(original_caption + "\n\n✅ *Status: Manual-Delivered*", 
+                                     message.chat.id, admin_msg_id, parse_mode='Markdown')
+        except Exception as e:
+            print(f"Error editing admin caption: {e}")
+
+        # ဝယ်သူထံသွားမည့် Message တွင် Review Button တွဲထည့်ခြင်း
+        review_markup = types.InlineKeyboardMarkup()
+        review_markup.add(
+            types.InlineKeyboardButton("✍️ Review / Feedback ပေးရန်", callback_data="give_review")
+        )
+
+        delivery_msg = (
+            "🎉 *သင်ဝယ်ယူထားသော ပစ္စည်းရောက်ရှိပါပြီ!*\n\n"
+            f"📦 *Item:* {item_name}\n"
+            f"📧 *Account Info:* \n`{account_data}`\n\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "⚠️ *အရေးကြီးသတိပေးချက်:*\n"
+            "ယခုအော်ဒါသည် Manual စနစ်ဖြင့် ပို့ဆောင်ပေးထားခြင်း ဖြစ်သောကြောင့် "
+            "ဝယ်ယူပြီးသည့် အချက်အလက်များကို *မိမိဘာသာ သီးသန့်သိမ်းဆည်းထားပါရန်* မေတ္တာရပ်ခံအပ်ပါသည်၊၊\n\n"
+            "🙏 စနစ်ပိုင်းလိုအပ်ချက်ကြောင့် My Orders ထဲတွင် ဤအချက်အလက်များကို "
+            "ပြန်လည်ကြည့်ရှု၍ မရနိုင်ခြင်းအတွက် အနူးအညွတ် တောင်းပန်အပ်ပါသည်၊၊\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "အဆင်မပြေမှုရှိပါက Admin @independence_N ကို ဆက်သွယ်ပါ၊၊"
+        )
+        
+        # ဝယ်သူထံသို့ ပစ္စည်းပို့ဆောင်ခြင်း
+        bot.send_message(target_user_id, delivery_msg, reply_markup=review_markup, parse_mode='Markdown')
+        # Admin ထံသို့ အကြောင်းကြားစာ ပြန်ပြခြင်း
+        bot.send_message(message.chat.id, f"✅ User <code>{target_user_id}</code> ထံ ပစ္စည်းကို Manual စနစ်ဖြင့် ပို့ဆောင်ပြီးပါပြီဗျာ၊၊", parse_mode='HTML')
+
+
+    # =====================================================================
+    # 🌟 FEATURE (၂): IN-BOT REVIEW SYSTEM (BOT ထဲတွင်တင် REVIEW ကောက်ခံမည့်စနစ်)
+    # =====================================================================
+    def init_review_handlers(bot):
+        
+        # (က) ဝယ်သူက Review ပေးရန် ခလုတ်အား နှိပ်လိုက်သည့်အချိန်
+        @bot.callback_query_handler(func=lambda call: call.data == 'give_review')
+        def ask_for_review_callback(call):
+            bot.answer_callback_query(call.id)
+            
+            review_text = (
+                "✍️ <b>Feedback & Review ပေးရန်</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                "ENI Premium Store ကို အားပေးရတာ အဆင်ပြေရဲ့လားခင်ဗျာ၊၊ "
+                "ဝန်ဆောင်မှုအပေါ် သဘောကျကျေနပ်မှု ရှိတယ်ဆိုရင် အောက်တွင် Review စာသားလေး (သို့မဟုတ်) "
+                "အကြံပြုချက်လေးများကို ရိုက်ပြီး ပို့ပေးပါဦးဗျာ၊၊\n\n"
+                "<i>(သင်ပို့လိုက်သော စာသားကို ကျွန်ုပ်တို့၏ Feedback Channel တွင် လူကြီးမင်း၏ နာမည်ကို ဖျောက်၍ အလိုအလျောက် တင်ပေးသွားမည် ဖြစ်ပါသည်)</i>"
+            )
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("❌ မပေးတော့ပါ", callback_data='home'))
+            
+            msg = bot.edit_message_text(review_text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode='HTML')
+            
+            # စာရိုက်မည့် နောက်တစ်ဆင့်အတွက် စောင့်ဖတ်ခိုင်းခြင်း
+            bot.register_next_step_handler(msg, process_user_review, bot)
+
+        # (ခ) ဝယ်သူပို့လိုက်သော Review စာသားကို ဖတ်ယူ၍ နေရာစုံသို့ ဖြန့်ဝေခြင်း
+        def process_user_review(message, bot):
+            user_id = message.from_user.id
+            user_name = message.from_user.first_name if message.from_user.first_name else "Customer"
+            review_content = message.text.strip()
+            
+            # အကယ်၍ command များ ရိုက်မိပါက Review အဖြစ်မမှတ်ဘဲ ဖျက်သိမ်းရန်
+            if review_content.startswith('/'):
+                bot.reply_to(message, "❌ Review ပေးခြင်းကို ဖျက်သိမ်းလိုက်ပါပြီ၊၊")
+                return
+
+            # 📢 သင်၏ Review Channel ID အမှန်
+            FEEDBACK_CHANNEL_ID = -1003744771191  
+
+            # Channel ထဲသို့ အလိုအလျောက် သွားမည့် ပုံစံ (Username အမှန် ပြင်ဆင်ပြီး)
+            channel_msg = (
+                "🌟 <b>Review From Customer</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"✍️ <i>\"{review_content}\"</i>\n\n"
+                f"👤 <b>Buyer:</b> {user_name[0]}*** (Verified Buyer)\n"
+                f"🏪 <b>Shop:</b> @ENIpremiumstore_bot\n"
+                "━━━━━━━━━━━━━━━━━━━━━━"
+            )
+
+            # Admin ထံ သီးသန့် အကြောင်းကြားမည့်ပုံစံ
+            admin_msg = (
+                "🔔 <b>Review အသစ်တစ်ခု ရောက်ရှိပါသည်!</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"👤 <b>User:</b> {user_name} (ID: <code>{user_id}</code>)\n"
+                f"📝 <b>Review:</b> {review_content}"
+            )
+
+            # ၁။ Feedback Channel သို့ ပို့ဆောင်ခြင်း
+            try: 
+                bot.send_message(FEEDBACK_CHANNEL_ID, channel_msg, parse_mode='HTML')
+            except Exception as e: 
+                print(f"Channel Send Error: {e}")
+
+            # ၂။ Admin ဆီသို့ ပို့ဆောင်ခြင်း
+            try: 
+                bot.send_message(ADMIN_ID, admin_msg, parse_mode='HTML')
+            except: 
+                pass
+
+            # ၃။ ဝယ်သူထံသို့ ကျေးဇူးတင်စကား ပြန်ကြားခြင်း
+            thank_you_text = (
+                "❤️ <b>ကျေးဇူးအများကြီး တင်ပါတယ်ဗျာ!</b>\n\n"
+                "လူကြီးမင်းပေးခဲ့တဲ့ Review ဟာ ENI Premium Store ရဲ့ ဝန်ဆောင်မှုတွေကို "
+                "ပိုမိုကောင်းမွန်လာအောင် ပြင်ဆင်ရာမှာ အများကြီး အထောက်အကူပြုပါတယ်ခင်ဗျာ၊၊ 🙏😊"
+            )
+            markup = types.InlineKeyboardMarkup()
+            markup.add(types.InlineKeyboardButton("🏠 Back to Home", callback_data='home'))
+            bot.send_message(user_id, thank_you_text, reply_markup=markup, parse_mode='HTML')
+
+    # Review Handler များ စတင်အလုပ်လုပ်ရန် နှိုးပေးခြင်း
+    init_review_handlers(bot)
+
+
+    # =====================================================================
+    # 🌟 FEATURE (၃): ADMIN ACTION HANDLER (APPROVE / REJECT ဆုံးဖြတ်ချက်)
+    # =====================================================================
     @bot.callback_query_handler(func=lambda call: call.data.startswith('admin_'))
     def admin_action(call):
-    # ၁။ ခလုတ်နှိပ်လိုက်တာနဲ့ ချက်ချင်း တုံ့ပြန်မှုပေးပါ (ဒါဆိုရင် နှိပ်ရတာ မြန်သွားပါမယ်)
+        # ၁။ ခလုတ်နှိပ်လိုက်တာနဲ့ ချက်ချင်း တုံ့ပြန်မှုပေးပါ (ဒါဆိုရင် နှိပ်ရတာ မြန်သွားပါမယ်)
         bot.answer_callback_query(call.id, "ခေတ္တစောင့်ဆိုင်းပါ...")
 
         parts = call.data.split('_')
         action, order_id = parts[1], int(parts[2])
         caption = call.message.caption
-    
+        
         try:
-        # Regex သုံးပြီး User ID နဲ့ Item Name ကို ဆွဲထုတ်ခြင်း
+            # Regex သုံးပြီး User ID နဲ့ Item Name ကို ဆွဲထုတ်ခြင်း
             target_user_id = int(re.search(r'User ID:.*?(\d+)', caption).group(1))
             item_name = re.search(r'Item: (.*)', caption).group(1).strip()
         except Exception as e:
@@ -196,7 +331,7 @@ def init_payment_handlers(bot):
             return
 
         if action == "approve":
-        # Database ထဲက အော်ဒါအသေးစိတ်ကို ယူခြင်း
+            # Database ထဲက အော်ဒါအသေးစိတ်ကို ယူခြင်း
             order = get_order_details(order_id)
             if not order:
                 bot.send_message(call.message.chat.id, "❌ အော်ဒါအချက်အလက် ရှာမတွေ့ပါ၊၊")
@@ -204,31 +339,31 @@ def init_payment_handlers(bot):
 
             # Stock ထဲမှ အကောင့်ကို နှိုက်ယူခြင်း
             account_data = pull_account_from_stock_by_name(item_name)
-        
+            
             if account_data:
-             # Database status များကို Update လုပ်ခြင်း
+                # Database status များကို Update လုပ်ခြင်း
                 update_order_status(order_id, "Success")
                 update_order_delivery(order_id, account_data)
-            
+                
                 # Admin Message တွင် status ပြောင်းလဲခြင်း
                 bot.edit_message_caption(caption + "\n\n✅ *Status: Auto-Delivered*", 
-                                     call.message.chat.id, call.message.message_id, parse_mode='Markdown')
-            
+                                         call.message.chat.id, call.message.message_id, parse_mode='Markdown')
+                
                 # ၂။ User ဆီကို ပို့မည့် စာသားအသစ်
                 delivery_msg = (
-                        "🎉 *သင်ဝယ်ယူထားသော ပစ္စည်းရောက်ရှိပါပြီ!*\n\n"
-                        f"📦 *Item:* {item_name}\n"
-                        f"📧 *Account Info:* \n`{account_data}`\n\n"
-                        "━━━━━━━━━━━━━━━━━━\n"
-                        "⚠️ *अရေးကြီးသတိပေးချက်:*\n"
-                        "ဝယ်ယူပြီးသည့် အချက်အလက်များကို *မိမိဘာသာ သီးသန့်သိမ်းဆည်းထားပါရန်* မေတ္တာရပ်ခံအပ်ပါသည်၊၊\n\n"
-                        "🙏 စနစ်ပိုင်းလိုအပ်ချက်ကြောင့် My Orders ထဲတွင် ဤအချက်အလက်များကို "
-                        "ပြန်လည်ကြည့်ရှု၍ မရနိုင်ခြင်းအတွက် အနူးအညွတ် တောင်းပန်အပ်ပါသည်၊၊\n"
-                        "━━━━━━━━━━━━━━━━━━\n"
-                        "အဆင်မပြေမှုရှိပါက Admin @independence_N ကို ဆက်သွယ်ပါ၊၊"
-                    )
+                    "🎉 *သင်ဝယ်ယူထားသော ပစ္စည်းရောက်ရှိပါပြီ!*\n\n"
+                    f"📦 *Item:* {item_name}\n"
+                    f"📧 *Account Info:* \n`{account_data}`\n\n"
+                    "━━━━━━━━━━━━━━━━━━\n"
+                    "⚠️ *အရေးကြီးသတိပေးချက်:*\n"
+                    "ဝယ်ယူပြီးသည့် အချက်အလက်များကို *မိမိဘာသာ သီးသန့်သိမ်းဆည်းထားပါရန်* မေတ္တာရပ်ခံအပ်ပါသည်၊၊\n\n"
+                    "🙏 စနစ်ပိုင်းလိုအပ်ချက်ကြောင့် My Orders ထဲတွင် ဤအချက်အလက်များကို "
+                    "ပြန်လည်ကြည့်ရှု၍ မရနိုင်ခြင်းအတွက် အနူးအညွတ် တောင်းပန်အပ်ပါသည်၊၊\n"
+                    "━━━━━━━━━━━━━━━━━━\n"
+                    "အဆင်မပြေမှုရှိပါက Admin @independence_N ကို ဆက်သွယ်ပါ၊၊"
+                )
 
-                # In-Bot Review အတွက် Button ဆောက်ခြင်း
+                # Review Button ဆောက်ခြင်း
                 review_markup = types.InlineKeyboardMarkup()
                 review_markup.add(
                     types.InlineKeyboardButton("✍️ Review / Feedback ပေးရန်", callback_data="give_review")
@@ -236,115 +371,33 @@ def init_payment_handlers(bot):
 
                 # ဝယ်သူဆီကို ပစ္စည်းကော Review Button ကော တွဲပို့ပေးခြင်း
                 bot.send_message(target_user_id, delivery_msg, reply_markup=review_markup, parse_mode='Markdown')
-            
-            # Admin Chat ထဲသို့ အောင်မြင်ကြောင်း စာပြန်ပြခြင်း (Error ပြင်ဆင်ထားပါသည်)
+                
+                # Admin Chat ထဲသို့ အောင်မြင်ကြောင်း စာပြန်ပြခြင်း
                 bot.send_message(call.message.chat.id, f"✅ Order #{order_id} ကို Auto-Delivery စနစ်ဖြင့် ပို့ဆောင်ပြီးပါပြီဗျာ၊၊")
 
             else:
                 # 🌟 Stock ကုန်နေလျှင် Admin ဆီက စာကို တိုက်ရိုက် စောင့်ဖတ်မည့် Workflow
                 msg = bot.send_message(
-                        call.message.chat.id,
-                        f"⚠️ <b>{item_name}</b> အတွက် အကောင့်ကုန်နေသဖြင့် Manual ပို့ပေးရန် လိုအပ်ပါသည်၊၊\n\n"
-                        f"<b>ဝယ်ယူသူထံ ပို့ပေးမည့် Account Info (Mail:Pass) ကို အောက်တွင် တိုက်ရိုက်ရိုက်ပြီး ပို့ပေးပါဗျာ-</b>",
-                        parse_mode='HTML'
-                    )
+                    call.message.chat.id,
+                    f"⚠️ <b>{item_name}</b> အတွက် အကောင့်ကုန်နေသဖြင့် Manual ပို့ပေးရန် လိုအပ်ပါသည်၊၊\n\n"
+                    f"<b>ဝယ်ယူသူထံ ပို့ပေးမည့် Account Info (Mail:Pass) ကို အောက်တွင် တိုက်ရိုက်ရိုက်ပြီး ပို့ပေးပါဗျာ-</b>",
+                    parse_mode='HTML'
+                )
                 # Admin ပို့လိုက်မည့် နောက်တစ်ဆင့်စာကို စောင့်ဖတ်ရန် Function သို့ လွှဲပေးခြင်း
                 bot.register_next_step_handler(msg, process_manual_delivery, bot, target_user_id, item_name, order_id, caption, call.message.message_id)
-            
+                
         elif action == "reject":
             update_order_status(order_id, "Rejected")
             bot.edit_message_caption(caption + "\n\n❌ *Status: Rejected*", 
-                                 call.message.chat.id, call.message.message_id, parse_mode='Markdown')
-        
+                                     call.message.chat.id, call.message.message_id, parse_mode='Markdown')
+            
             reject_msg = (
-                    f"❌ သင်၏ Order ID: #{order_id} ကို ငြင်းပယ်လိုက်ပါတယ်၊၊\n\n"
-                    "အဆင်မပြေမှု တစ်စုံတစ်ရာ ရှိပါက Menu မှတစ်ဆင့် Home Page သို့သွားပြီး "
-                    "Support ခလုတ်ကိုနှိပ်၍ Admin ကို တိုက်ရိုက်ဆက်သွယ် မေးမြန်းနိုင်ပါတယ်ဗျာ၊၊"
-                )
+                f"❌ သင်၏ Order ID: #{order_id} ကို ငြင်းပယ်လိုက်ပါတယ်၊၊\n\n"
+                "အဆင်မပြေမှု တစ်စုံတစ်ရာ ရှိပါက Menu မှတစ်ဆင့် Home Page သို့သွားပြီး "
+                "Support ခလုတ်ကိုနှိပ်၍ Admin ကို တိုက်ရိုက်ဆက်သွယ် မေးမြန်းနိုင်ပါတယ်ဗျာ၊၊"
+            )
             bot.send_message(target_user_id, reject_msg)
             bot.answer_callback_query(call.id, "Order ကို ငြင်းပယ်လိုက်ပါပြီ", show_alert=True)
-
-def init_review_handlers(bot):
-    
-    # (က) ဝယ်သူက "Review / Feedback ပေးရန်" ခလုတ်ကို နှိပ်လိုက်ချိန်
-    @bot.callback_query_handler(func=lambda call: call.data == 'give_review')
-    def ask_for_review_callback(call):
-        bot.answer_callback_query(call.id)
-        
-        # Message အဟောင်းကို ဖျက်ပြီး စာရိုက်ခိုင်းမည်
-        review_text = (
-            "✍️ <b>Feedback & Review ပေးရန်</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            "ENI Premium Store ကို အားပေးရတာ အဆင်ပြေရဲ့လားခင်ဗျာ၊၊ "
-            "ဝန်ဆောင်မှုအပေါ် သဘောကျကျေနပ်မှု ရှိတယ်ဆိုရင် အောက်တွင် Review စာသားလေး (သို့မဟုတ်) "
-            "အကြံပြုချက်လေးများကို ရိုက်ပြီး ပို့ပေးပါဦးဗျာ၊၊\n\n"
-            "<i>(သင်ပို့လိုက်သော စာသားကို ကျွန်ုပ်တို့၏ Feedback Channel တွင် လူကြီးမင်း၏ နာမည်ကို ဖျောက်၍ အလိုအလျောက် တင်ပေးသွားမည် ဖြစ်ပါသည်)</i>"
-        )
-        
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("❌ မပေးတော့ပါ", callback_data='home'))
-        
-        msg = bot.edit_message_text(review_text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode='HTML')
-        
-        # ဝယ်သူ ရိုက်မည့် နောက်တစ်ဆင့်စာကို စောင့်ဖတ်ရန် လွှဲပေးခြင်း
-        bot.register_next_step_handler(msg, process_user_review, bot)
-
-    # (ခ) ဝယ်သူ ရိုက်ပို့လိုက်သည့် Review စာသားကို လက်ခံပြီး Channel နှင့် Admin ဆီ ပို့ပေးသည့် Function
-    def process_user_review(message, bot):
-        user_id = message.from_user.id
-        user_name = message.from_user.first_name if message.from_user.first_name else "Customer"
-        review_content = message.text.strip()
-        
-        # အကယ်၍ အမှားပြင်ချင်လို့ /start တို့ /home တို့ ရိုက်မိရင် Review အနေနဲ့ မမှတ်ပဲ ကျော်ခွရန်
-        if review_content.startswith('/'):
-            bot.reply_to(message, "❌ Review ပေးခြင်းကို ဖျက်သိမ်းလိုက်ပါပြီ၊၊")
-            return
-
-        FEEDBACK_CHANNEL_ID = -1003923790039  
-
-        # Channel ထဲသို့ သွားမည့် စာသားပုံစံ (Anonymous ဖြစ်အောင် နာမည်ကို အစစာလုံးပဲ ပြထားမည်)
-        channel_msg = (
-            "🌟 <b>Review From Customer</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"✍️ <i>\"{review_content}\"</i>\n\n"
-            f"👤 <b>Buyer:</b> {user_name[0]}*** (Verified Buyer)\n"
-            f"🏪 <b>Shop:</b> @ENIpremiumstore_bot\n"
-            "━━━━━━━━━━━━━━━━━━━━━━"
-        )
-
-        # Admin ဆီသို့ သွားမည့် စာသားပုံစံ (Admin သိအောင် User ID ပါ အတိအကျပြမည်)
-        admin_msg = (
-            "🔔 <b>Review အသစ်တစ်ခု ရောက်ရှိပါသည်!</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"👤 <b>User:</b> {user_name} (ID: <code>{user_id}</code>)\n"
-            f"📝 <b>Review:</b> {review_content}"
-        )
-
-        # ၁။ Feedback Channel ဆီ ပို့ခြင်း
-        try:
-            bot.send_message(FEEDBACK_CHANNEL_ID, channel_msg, parse_mode='HTML')
-        except Exception as e:
-            print(f"Error sending review to channel: {e}")
-            # Channel ID မှားနေရင် Admin ဆီပဲ သိအောင် အကြောင်းကြားမည်
-            bot.send_message(ADMIN_ID, f"⚠️ Channel သို့ Review ပို့၍မရပါ (ID စစ်ပါ)- {e}")
-
-        # ၂။ Admin ဆီ ပို့ခြင်း
-        try:
-            bot.send_message(ADMIN_ID, admin_msg, parse_mode='HTML')
-        except:
-            pass
-
-        # ၃။ ဝယ်သူဆီ ကျေးဇူးတင်စကား ပြန်ကြားခြင်း
-        thank_you_text = (
-            "❤️ <b>ကျေးဇူးအများကြီး တင်ပါတယ်ဗျာ!</b>\n\n"
-            "လူကြီးမင်းပေးခဲ့တဲ့ Review ဟာ ENI Premium Store ရဲ့ ဝန်ဆောင်မှုတွေကို "
-            "ပိုမိုကောင်းမွန်လာအောင် ပြင်ဆင်ရာမှာ အများကြီး အထောက်အကူပြုပါတယ်ခင်ဗျာ၊၊ "
-            "နောက်နောင်လည်း ပြန်လည်အားပေးဖို့ ဖိတ်ခေါ်အပ်ပါသည်၊၊ 🙏😊"
-        )
-        
-        markup = types.InlineKeyboardMarkup()
-        markup.add(types.InlineKeyboardButton("🏠 Back to Home", callback_data='home'))
-        bot.send_message(user_id, thank_you_text, reply_markup=markup, parse_mode='HTML')
         
     # ၅။ My Orders ပြသခြင်း
     @bot.callback_query_handler(func=lambda call: call.data == 'my_orders')
