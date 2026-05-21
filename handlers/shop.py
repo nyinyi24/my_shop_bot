@@ -109,21 +109,26 @@ def show_shop_catalog(user_id, bot):
         return
 
     for item in items:
-        item_id = item[0]
-        item_name = item[1]
-        price = item[3]
-        stock = item[4] # Database ထဲက stock အရေအတွက်ကို ယူခြင်း
-        
-        # ဈေးနှုန်းကို ကော်မာ ( , ) ခံပြီး သတ်သတ်မှတ်မှတ်ပြရန်
-        formatted_price = f"{int(price):,}"
-        
-        # 🌟 Stock ပေါ်မူတည်ပြီး စာသားကို အရင်တုန်းကလို ပြန်ပြင်ဆင်ခြင်း
-        if stock > 0:
-            btn_text = f"📦 {item_name} - {formatted_price} MMK (Stock: {stock} ခု)"
-        else:
-            btn_text = f"❌ {item_name} - (Stock ပြတ်နေပါသည်)"
+        try:
+            item_id = item[0]
+            item_name = item[1]
+            price = item[3]
             
-        markup.add(types.InlineKeyboardButton(btn_text, callback_data=f"buy_{item_id}"))
+            # 🌟 Safe Check: item ထဲမှာ column ၅ ခု (index 4) ပါ/မပါ သေချာစစ်ပြီးမှ ယူမယ်
+            stock = item[4] if len(item) > 4 else 0 
+            
+            formatted_price = f"{int(float(str(price).replace(',', ''))):,}"
+            
+            if stock > 0:
+                btn_text = f"📦 {item_name} - {formatted_price} MMK (Stock: {stock} ခု)"
+            else:
+                btn_text = f"❌ {item_name} - (Stock ပြတ်နေပါသည်)"
+                
+            markup.add(types.InlineKeyboardButton(btn_text, callback_data=f"buy_{item_id}"))
+        except Exception as e:
+            # အကယ်၍ item တစ်ခုခု အချက်အလက်မစုံရင် Bot လုံးဝရပ်မသွားဘဲ ကျော်ခွသွားအောင်လုပ်ခြင်း
+            print(f"Error rendering item: {e}")
+            continue
     
     markup.add(types.InlineKeyboardButton("🏠 Back to Home", callback_data='home'))
     bot.send_message(user_id, "🛍️ *Our Products:*\n\nဝယ်ယူလိုသည့် ပစ္စည်းကို ရွေးချယ်ပါ-", 
