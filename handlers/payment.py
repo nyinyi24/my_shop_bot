@@ -258,10 +258,11 @@ def init_review_handlers(bot):
         except: pass
 
         thank_you_text = (
-            "❤️ <b>ကျေးဇူးအများကြီး တင်ပါတယ်ဗျာ!</b>\n\n"
-            "လူကြီးမင်းပေးခဲ့တဲ့ Review ဟာ ENI Premium Store ရဲ့ ဝန်ဆောင်မှုတွေကို "
-            "ပိုမိုကောင်းမွန်လာအောင် ပြင်ဆင်ရာမှာ အများကြီး အထောက်အကူပြုပါတယ်ခင်ဗျာ၊၊ 🙏😊"
-        )
+                "❤️ <b>ကျေးဇူးအများကြီး တင်ပါတယ်ဗျာ!</b>\n\n"
+                "လူကြီးမင်းပေးခဲ့တဲ့ Review ဟာ ENI Premium Store ရဲ့ ဝန်ဆောင်မှုတွေကို "
+                "ပိုမိုကောင်းမွန်လာအောင် ပြင်ဆင်ရာမှာ အများကြီး အထောက်အကူပြုပါတယ်ခင်ဗျာ၊၊ 🙏😊\n\n"
+                "📣 အခြားသူများ၏ Review & Feedback များကိုလည်း <a href='https://t.me/ENIreviews'>ENI Reviews Channel</a> တွင် ဝင်ရောက်ကြည့်ရှုနိုင်ပါသည်ဗျာ၊၊"
+            )
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("🏠 Back to Home", callback_data='home'))
         bot.send_message(user_id, thank_you_text, reply_markup=markup, parse_mode='HTML')
