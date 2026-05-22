@@ -264,7 +264,7 @@ def init_payment_handlers(bot):
                 return
 
             # 📢 သင်၏ Review Channel ID အမှန်
-            FEEDBACK_CHANNEL_ID = -1003744771191  
+            FEEDBACK_CHANNEL_ID = -1003923790039  
 
             # Channel ထဲသို့ အလိုအလျောက် သွားမည့် ပုံစံ (Username အမှန် ပြင်ဆင်ပြီး)
             channel_msg = (
