@@ -63,8 +63,18 @@ def handle_send_command(message):
             "━━━━━━━━━━━━━━━━━━\n"
             "အဆင်မပြေမှုရှိပါက Admin @independence_N ကို ဆက်သွယ်ပါ၊၊"
         )
-        bot.send_message(target_id, delivery_text)
-        bot.reply_to(message, f"✅ User <code>{target_id}</code> ထံ ပစ္စည်းပို့ဆောင်ပြီးပါပြီ၊၊")
+        # 🌟 ၁။ Review Button ဆောက်ခြင်း (main.py ထဲတွင် ခလုတ်တွဲရန်)
+        from telebot import types # အပေါ်မှာ types ကို import မလုပ်ရသေးရင် သုံးနိုင်ရန်
+        review_markup = types.InlineKeyboardMarkup()
+        review_markup.add(
+            types.InlineKeyboardButton("✍️ Review / Feedback ပေးရန်", callback_data="give_review")
+        )
+
+        # 🌟 ၂။ ဝယ်သူထံသို့ စာပို့ရာတွင် reply_markup=review_markup ကို တွဲထည့်ပေးလိုက်ပါသည်
+        bot.send_message(target_id, delivery_text, reply_markup=review_markup, parse_mode='HTML')
+        
+        # Admin Chat ထဲသို့ အကြောင်းကြားစာ ပြန်ပြခြင်း
+        bot.reply_to(message, f"✅ User <code>{target_id}</code> ထံ ပစ္စည်းပို့ဆောင်ပြီး Review Button တွဲပေးလိုက်ပါပြီ၊၊", parse_mode='HTML')
 
     except Exception as e:
         bot.reply_to(message, f"❌ ပို့ဆောင်မှု မအောင်မြင်ပါ- {e}")
