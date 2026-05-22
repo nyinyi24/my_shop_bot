@@ -5,7 +5,9 @@ from database import init_db, set_shop_status
 from handlers.start import init_start_handlers, show_home_menu
 from handlers.shop import init_shop_handlers
 from handlers.giveaway import init_giveaway_handlers
-from handlers.payment import init_payment_handlers
+
+# 🚨 ပြင်ဆင်ချက်: payment.py ထဲက init_all_handlers ကို လှမ်းယူပါတယ်
+from handlers.payment import init_all_handlers
 
 # ၁။ Bot Initialize လုပ်ခြင်း
 bot = telebot.TeleBot(API_TOKEN, parse_mode='HTML')
@@ -17,7 +19,9 @@ init_db()
 init_start_handlers(bot)
 init_shop_handlers(bot)
 init_giveaway_handlers(bot)
-init_payment_handlers(bot)
+
+# 🌟 ပြင်ဆင်ချက်: Payment, Review, Admin Buttons အားလုံး တစ်ခါတည်း အလုပ်လုပ်စေရန် နှိုးလိုက်ခြင်း
+init_all_handlers(bot)
 
 # ---------------------------------------------------------
 # Universal Callback Handlers
@@ -63,14 +67,15 @@ def handle_send_command(message):
             "━━━━━━━━━━━━━━━━━━\n"
             "အဆင်မပြေမှုရှိပါက Admin @independence_N ကို ဆက်သွယ်ပါ၊၊"
         )
-        # 🌟 ၁။ Review Button ဆောက်ခြင်း (main.py ထဲတွင် ခလုတ်တွဲရန်)
-        from telebot import types # အပေါ်မှာ types ကို import မလုပ်ရသေးရင် သုံးနိုင်ရန်
+        
+        # 🌟 Review Button ဆောက်ခြင်း
+        from telebot import types 
         review_markup = types.InlineKeyboardMarkup()
         review_markup.add(
             types.InlineKeyboardButton("✍️ Review / Feedback ပေးရန်", callback_data="give_review")
         )
 
-        # 🌟 ၂။ ဝယ်သူထံသို့ စာပို့ရာတွင် reply_markup=review_markup ကို တွဲထည့်ပေးလိုက်ပါသည်
+        # ဝယ်သူထံသို့ စာပို့ရာတွင် reply_markup=review_markup ကို တွဲထည့်ပေးခြင်း
         bot.send_message(target_id, delivery_text, reply_markup=review_markup, parse_mode='HTML')
         
         # Admin Chat ထဲသို့ အကြောင်းကြားစာ ပြန်ပြခြင်း
