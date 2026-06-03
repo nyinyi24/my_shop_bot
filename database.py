@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime
 
 DATABASE_NAME = 'shop.db'
 
@@ -58,13 +59,10 @@ def get_shop_status():
         return 'open'
 
 def set_shop_status(status):
-    """ဆိုင်ရဲ့ status (open/close/maintenance) ကို database ထဲမှာ update လုပ်ရန်"""
-    import sqlite3
-    from config import DATABASE_NAME
+    """ဆိုင်ရဲ့ status ကို update လုပ်ရန် (Fix: config import ကို ဖယ်ရှားထားသည်)"""
     try:
         with sqlite3.connect(DATABASE_NAME) as conn:
             cursor = conn.cursor()
-            # settings table ထဲမှာ shop_status key ရှိမရှိ အရင်စစ်ပြီးမှ update လုပ်မယ်
             cursor.execute("UPDATE settings SET value = ? WHERE key = 'shop_status'", (status,))
             conn.commit()
     except Exception as e:
@@ -75,7 +73,7 @@ def set_shop_status(status):
 def get_all_items():
     with sqlite3.connect(DATABASE_NAME) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * FROM items")
+        cursor.execute("SELECT * Barnes FROM items")
         return cursor.fetchall()
 
 def get_item_by_id(item_id):
@@ -85,6 +83,22 @@ def get_item_by_id(item_id):
         return cursor.fetchone()
 
 # --- Stocks Functions ---
+
+def reduce_item_stock_manual(item_name, quantity=1):
+    """[ADDED] Manual စနစ်အတွက် Admin က Approve လုပ်ချိန်တွင် Stock တိုက်ရိုက်လျှော့ပေးရန် function"""
+    try:
+        with sqlite3.connect(DATABASE_NAME, timeout=10) as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE items 
+                SET stock = MAX(0, stock - ?) 
+                WHERE TRIM(name) = TRIM(?) COLLATE NOCASE
+            """, (quantity, item_name))
+            conn.commit()
+            return True
+    except Exception as e:
+        print(f"Error reducing manual stock: {e}")
+        return False
 
 def pull_account_from_stock_by_name(item_name):
     with sqlite3.connect(DATABASE_NAME, check_same_thread=False, timeout=10) as conn:
@@ -105,7 +119,10 @@ def pull_account_from_stock_by_name(item_name):
 
 # --- User Functions ---
 
-def add_user(user_id, join_date):
+def add_user(user_id, join_date=None):
+    """User အသစ်မှတ်ရန် (Fix: join_date မပါလျှင် ယနေ့ရက်စွဲ Auto ထည့်ပေးရန် ပြင်ဆင်ထားသည်)"""
+    if join_date is None:
+        join_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     try:
         with sqlite3.connect(DATABASE_NAME, timeout=10) as conn:
             cursor = conn.cursor()
@@ -131,10 +148,18 @@ def create_order(user_id, item_name, quantity, payment_method, status, timestamp
         return cursor.lastrowid
 
 def update_order_status(order_id, status):
+    """Order Status ကို update လုပ်ပေးပြီး 'Success' ဖြစ်ပါက Stock ကိုပါ Auto လျှော့ပေးမည်"""
     with sqlite3.connect(DATABASE_NAME) as conn:
         cursor = conn.cursor()
         cursor.execute("UPDATE orders SET status = ? WHERE order_id = ?", (status, order_id))
         conn.commit()
+        
+        # အကယ်၍ Admin က အော်ဒါကို အောင်မြင်ကြောင်း (Success) သတ်မှတ်လိုက်ရင် Stock ကိုပါ Auto လျှော့ခိုင်းမယ်
+        if status.lower() == 'success':
+            cursor.execute("SELECT item_name, quantity FROM orders WHERE order_id = ?", (order_id,))
+            order = cursor.fetchone()
+            if order:
+                reduce_item_stock_manual(order[0], order[1])
 
 def update_order_delivery(order_id, account_info):
     with sqlite3.connect(DATABASE_NAME) as conn:
