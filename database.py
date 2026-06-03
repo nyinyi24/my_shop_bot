@@ -1,5 +1,7 @@
 import sqlite3
 from datetime import datetime
+import secrets
+import string
 from config import DATABASE_NAME
 
 def init_db():
@@ -27,7 +29,9 @@ def init_db():
              payment_method TEXT, 
              status TEXT, 
              timestamp TEXT,
-             delivered_data TEXT)''')
+             delivered_data TEXT,
+             order_code TEXT UNIQUE)''')
+        ensure_order_code_column(cursor)
         
         # 5. Giveaway Tables
         cursor.execute('''CREATE TABLE IF NOT EXISTS gw_items 
@@ -142,11 +146,37 @@ def get_user(user_id):
 
 # --- Orders Functions ---
 
+def ensure_order_code_column(cursor):
+    cursor.execute("PRAGMA table_info(orders)")
+    columns = [row[1] for row in cursor.fetchall()]
+    if "order_code" not in columns:
+        cursor.execute("ALTER TABLE orders ADD COLUMN order_code TEXT")
+    cursor.execute("SELECT order_id FROM orders WHERE order_code IS NULL OR order_code = ''")
+    for (order_id,) in cursor.fetchall():
+        order_code = generate_order_code()
+        while cursor.execute("SELECT 1 FROM orders WHERE order_code = ?", (order_code,)).fetchone():
+            order_code = generate_order_code()
+        cursor.execute("UPDATE orders SET order_code = ? WHERE order_id = ?", (order_code, order_id))
+
+def generate_order_code():
+    alphabet = string.ascii_uppercase + string.digits
+    return "ORD-" + "".join(secrets.choice(alphabet) for _ in range(10))
+
+def get_public_order_id(order):
+    if order and len(order) > 8 and order[8]:
+        return order[8]
+    if isinstance(order, (tuple, list)) and order:
+        return f"ORD-{int(order[0]):010d}"
+    return "ORD-UNKNOWN"
+
 def create_order(user_id, item_name, quantity, payment_method, status, timestamp):
     with sqlite3.connect(DATABASE_NAME) as conn:
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO orders (user_id, item_name, quantity, payment_method, status, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-                       (user_id, item_name, quantity, payment_method, status, timestamp))
+        order_code = generate_order_code()
+        while cursor.execute("SELECT 1 FROM orders WHERE order_code = ?", (order_code,)).fetchone():
+            order_code = generate_order_code()
+        cursor.execute("INSERT INTO orders (user_id, item_name, quantity, payment_method, status, timestamp, order_code) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                       (user_id, item_name, quantity, payment_method, status, timestamp, order_code))
         conn.commit()
         return cursor.lastrowid
 

@@ -8,7 +8,7 @@ from database import get_shop_status
 from database import (
     get_item_by_id, update_order_status, create_order, 
     get_order_details, update_order_delivery, 
-    pull_account_from_stock_by_name, get_user_orders
+    pull_account_from_stock_by_name, get_user_orders, get_public_order_id
 )
 
 # ယာယီ အော်ဒါမှတ်တမ်းများကို သိမ်းရန်
@@ -143,19 +143,22 @@ def init_payment_handlers(bot):
         
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         order_id = create_order(user_id, item[1], qty, method.upper(), "Pending", timestamp)
+        order_code = get_public_order_id(get_order_details(order_id))
         
         pending_orders[user_id] = {
-            "order_id": order_id, 
+            "order_id": order_id,
+            "order_code": order_code,
             "item_name": item[1], 
             "qty": qty, 
             "total": item[3]*qty, 
             "method": method.upper()
         }
+        order_id = order_code
 
         text = (
             f"✅ *{method.upper()}* ကို ရွေးချယ်ထားပါတယ်၊၊\n\n"
             f"💰 ကျသင့်ငွေ: {formatted_total} MMK\n"
-            f"🆔 Order ID: `#{order_id}`\n\n"
+            f"🆔 Order ID: `{order_id}`\n\n"
             f"📍 *ငွေလွှဲရန်:* `09975374020` (NNML)\n\n"
             f"ငွေလွှဲပြီးပါက ပြေစာ Screenshot ကို ပို့ပေးပါ၊၊"
         )
@@ -175,6 +178,8 @@ def init_payment_handlers(bot):
             types.InlineKeyboardButton("✅ Approve", callback_data=f"admin_approve_{order_data['order_id']}"),
             types.InlineKeyboardButton("❌ Reject", callback_data=f"admin_reject_{order_data['order_id']}")
         )
+
+        order_data["order_id"] = order_data["order_code"]
 
         from handlers.shop import is_shop_open
         alert_title = "🔔 *New Order Alert!*" if is_shop_open() else "🌙 *New Pre-Order Alert (ညဘက်မှာယူမှု)!*"
@@ -327,9 +332,11 @@ def init_admin_handlers(bot):
                 bot.register_next_step_handler(msg, process_manual_delivery, bot, target_user_id, item_name, order_id, caption, call.message.message_id)
                 
         elif action == "reject":
-            update_order_status(order_id, "Rejected")
+            internal_order_id = order_id
+            order_id = get_public_order_id(get_order_details(internal_order_id))
+            update_order_status(internal_order_id, "Rejected")
             bot.edit_message_caption(caption + "\n\n❌ *Status: Rejected*", call.message.chat.id, call.message.message_id, parse_mode='Markdown')
-            reject_msg = f"❌ သင်၏ Order ID: #{order_id} ကို ငြင်းပယ်လိုက်ပါတယ်၊၊"
+            reject_msg = f"❌ သင်၏ Order ID: {order_id} ကို ငြင်းပယ်လိုက်ပါတယ်၊၊"
             bot.send_message(target_user_id, reject_msg)
 
 
@@ -359,8 +366,10 @@ def init_order_history_handlers(bot):
             order_id = int(call.data.split('_')[2])
             order = get_order_details(order_id)
             if order:
+                order = list(order)
+                order[0] = get_public_order_id(order)
                 acc_info = order[7] if len(order) > 7 and order[7] else "အချက်အလက်မရှိပါ"
-                detail_text = f"📄 *Order Detail* (ID: #{order[0]})\n📦 *Item:* {order[2]}\n📧 *Account Info:* \n`{acc_info}`"
+                detail_text = f"📄 *Order Detail* (ID: {order[0]})\n📦 *Item:* {order[2]}\n📧 *Account Info:* \n`{acc_info}`"
                 markup = types.InlineKeyboardMarkup()
                 markup.add(types.InlineKeyboardButton("⬅️ Back to List", callback_data='my_orders'))
                 bot.edit_message_text(detail_text, call.message.chat.id, call.message.message_id, reply_markup=markup, parse_mode='Markdown')
