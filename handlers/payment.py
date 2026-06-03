@@ -81,7 +81,10 @@ def init_payment_handlers(bot):
             short_detail = item[2]      
             raw_price_str = str(item[3]).replace(',', '') 
             item_stock = item[4]
+            product_info = item[5] if len(item) > 5 and item[5] else "Product details မရှိသေးပါ။"
             product_info = item[6] if len(item) > 6 and item[6] else "အသေးစိတ် အချက်အလက် မရှိသေးပါ၊၊"
+
+            product_info = item[5] if len(item) > 5 and item[5] else product_info
 
             if item_stock <= 0:
                 bot.answer_callback_query(call.id, "❌ စိတ်မရှိပါနဲ့ဗျာ၊ ဒီပစ္စည်းက Stock ပြတ်သွားပါပြီ၊၊", show_alert=True)
