@@ -1,12 +1,11 @@
 import telebot
 import sqlite3
 from config import DATABASE_NAME, API_TOKEN, ADMIN_ID
-from database import init_db, set_shop_status
+from database import init_db, set_shop_status, add_user 
 from handlers.start import init_start_handlers, show_home_menu
 from handlers.shop import init_shop_handlers
 from handlers.giveaway import init_giveaway_handlers
 
-# 🚨 ပြင်ဆင်ချက်: payment.py ထဲက init_all_handlers ကို လှမ်းယူပါတယ်
 from handlers.payment import init_all_handlers
 
 # ၁။ Bot Initialize လုပ်ခြင်း
@@ -14,6 +13,21 @@ bot = telebot.TeleBot(API_TOKEN, parse_mode='HTML')
 
 # ၂။ Database Initialize လုပ်ခြင်း
 init_db()
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🌟 [FIXED] USER အသစ်များ ဝင်လာပါက Database ထဲ မဖြစ်မနေ အရင်ဆုံး မှတ်ပေးမည့် Middleware Handler
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+@bot.message_handler(commands=['start'])
+def handle_start_and_register_user(message):
+    try:
+        user_id = message.from_user.id
+        # လူသစ်ဝင်လာရင် ဖွင့်ဖွင့်ချင်း Database ထဲကို အတင်းသွားမှတ်ခိုင်းမယ်
+        add_user(user_id)
+    except Exception as e:
+        print(f"Error registering user on start: {e}")
+    
+    # ပြီးရင် မူလကုဒ်အတိုင်း Home Menu ကို လှမ်းပြခိုင်းမယ်
+    show_home_menu(message.from_user.id, message.from_user.first_name, bot)
 
 # ၃။ Handler များ Register လုပ်ခြင်း
 init_start_handlers(bot)
@@ -75,10 +89,7 @@ def handle_send_command(message):
             types.InlineKeyboardButton("✍️ Review / Feedback ပေးရန်", callback_data="give_review")
         )
 
-        # ဝယ်သူထံသို့ စာပို့ရာတွင် reply_markup=review_markup ကို တွဲထည့်ပေးခြင်း
         bot.send_message(target_id, delivery_text, reply_markup=review_markup, parse_mode='HTML')
-        
-        # Admin Chat ထဲသို့ အကြောင်းကြားစာ ပြန်ပြခြင်း
         bot.reply_to(message, f"✅ User <code>{target_id}</code> ထံ ပစ္စည်းပို့ဆောင်ပြီး Review Button တွဲပေးလိုက်ပါပြီ၊၊", parse_mode='HTML')
 
     except Exception as e:
@@ -91,9 +102,6 @@ def change_status(message):
         return
 
     status = message.text[1:]  # /open → open
-
-    # database.py ၏ set_shop_status() ကို သုံးခြင်းဖြင့်
-    # row မရှိသော်လည်း INSERT OR REPLACE ဖြင့် အမြဲ အလုပ်လုပ်မည်
     set_shop_status(status)
 
     status_msg = {
@@ -149,7 +157,6 @@ def set_bot_commands(bot):
         admin_commands,
         scope=telebot.types.BotCommandScopeChat(chat_id=ADMIN_ID)
     )
-
 
 set_bot_commands(bot)
 
