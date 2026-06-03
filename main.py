@@ -116,7 +116,7 @@ def broadcast(message):
 
     with sqlite3.connect(DATABASE_NAME) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT DISTINCT user_id FROM orders")
+        cursor.execute("SELECT user_id FROM users")
         users = cursor.fetchall()
 
     count = 0

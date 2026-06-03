@@ -1,7 +1,6 @@
 import sqlite3
 from datetime import datetime
-
-DATABASE_NAME = 'shop.db'
+from config import DATABASE_NAME
 
 def init_db():
     with sqlite3.connect(DATABASE_NAME) as conn:
@@ -73,7 +72,7 @@ def set_shop_status(status):
 def get_all_items():
     with sqlite3.connect(DATABASE_NAME) as conn:
         cursor = conn.cursor()
-        cursor.execute("SELECT * Barnes FROM items")
+        cursor.execute("SELECT * FROM items")
         return cursor.fetchall()
 
 def get_item_by_id(item_id):
@@ -128,8 +127,12 @@ def add_user(user_id, join_date=None):
             cursor = conn.cursor()
             cursor.execute("INSERT OR IGNORE INTO users (user_id, join_date) VALUES (?, ?)", (user_id, join_date))
             conn.commit()
+            return cursor.rowcount > 0
     except sqlite3.OperationalError as e:
-        print(f"Database Lock Error: {e}")
+        print(f"Database Lock Error while adding user {user_id}: {e}")
+    except Exception as e:
+        print(f"Error adding user {user_id}: {e}")
+    return False
 
 def get_user(user_id):
     with sqlite3.connect(DATABASE_NAME) as conn:

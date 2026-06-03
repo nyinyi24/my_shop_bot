@@ -1,6 +1,7 @@
 # ===== အရေးကြီး — ဒီဖိုင်များကို GitHub တင်မည်မဟုတ် =====
 .env
 *.db
+*.db-journal
 *.sqlite
 *.sqlite3
 

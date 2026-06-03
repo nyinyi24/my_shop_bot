@@ -63,6 +63,12 @@ def init_start_handlers(bot):
         first_name = message.from_user.first_name
 
         # Maintenance Mode စစ်ဆေးခြင်း (Admin မဟုတ်သူများကိုသာ ပိတ်မည်)
+        try:
+            if add_user(user_id):
+                print(f"Registered new user: {user_id}")
+        except Exception as db_err:
+            print(f"[DATABASE ERROR IN START]: {db_err}")
+
         status = get_shop_status()
         if status == 'maintenance' and str(user_id) != str(ADMIN_ID):
             maintenance_text = (
@@ -89,6 +95,7 @@ def init_start_handlers(bot):
 
     @bot.message_handler(commands=["home"])
     def home_handler(message):
+        add_user(message.from_user.id)
         show_home_menu(message.from_user.id, message.from_user.first_name, bot)
 
     @bot.message_handler(commands=["help"])

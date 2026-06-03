@@ -1,8 +1,9 @@
 import sqlite3
+from config import DATABASE_NAME
 
 def add_stock():
     # သင့် folder ထဲက shop.db ဆီကို ချိတ်ဆက်ပါမယ်
-    conn = sqlite3.connect('shop.db')
+    conn = sqlite3.connect(DATABASE_NAME)
     cursor = conn.cursor()
 
     # --- ဒီနေရာမှာ ရောင်းချမယ့် အကောင့်တွေကို ထည့်ပါ ---
