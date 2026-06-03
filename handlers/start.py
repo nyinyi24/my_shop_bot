@@ -22,7 +22,7 @@ def show_home_menu(user_id, first_name, bot):
         f"🤖 *ကျွန်ုပ်တို့၏ Bot သည်:*\n"
         f"🔹 Premium Account များကို သက်သာသော ဈေးနှုန်းဖြင့် ဝယ်ယူနိုင်ခြင်း\n"
         f"🔹 လစဉ် Giveaway အစီအစဉ်များတွင် ပါဝင်ကံစမ်းနိုင်ခြင်း\n"
-        f"🔹 လုံခြုံစိတ်ချရသော ငွေပေးချေမှုစနစ်များဖြင့် ဝန်ဆောင်မှုပေးနေပါသည်၊၊\n\n"
+        f"🔹 လုံခြုံစိတ်ချရသော NgwePayစနစ်များဖြင့် ဝန်ဆောင်မှုပေးနေပါသည်၊၊\n\n"
     )
 
     markup = types.InlineKeyboardMarkup(row_width=2)
@@ -75,9 +75,15 @@ def init_start_handlers(bot):
             bot.send_message(message.chat.id, maintenance_text, parse_mode='HTML')
             return
 
-        # User အသစ် မှတ်ပုံတင်ခြင်း
-        if not get_user(user_id):
-            add_user(user_id, datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+        # 🌟 [FIXED] User အသစ် မှတ်ပုံတင်ခြင်းအပိုင်းကို Error တက်ရင်ကျော်သွားနိုင်အောင် try...except ခံထားသည်
+        try:
+            user_info = get_user(user_id)
+            if not user_info:
+                join_date_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                add_user(user_id, join_date_str)
+                print(f"📦 [SUCCESS] Registered new user: {user_id}")
+        except Exception as db_err:
+            print(f"⚠️ [DATABASE ERROR IN START]: {db_err}")
 
         show_home_menu(user_id, first_name, bot)
 
@@ -88,8 +94,6 @@ def init_start_handlers(bot):
     @bot.message_handler(commands=["help"])
     def help_handler(message):
         send_help(message, bot)
-
-    # home callback ကို main.py တွင် universal_back_home အဖြစ် တစ်ခုတည်းသာ register လုပ်ထားသည်
 
     @bot.callback_query_handler(func=lambda call: call.data == 'verify_subscription')
     def verify_subscription_callback(call):
